@@ -1,5 +1,6 @@
-use serde::{Deserialize, Serialize};
+use base64::{Engine as _, engine::general_purpose};
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProxyConfig {
@@ -19,7 +20,7 @@ pub struct ProxyConfig {
     pub short_id: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Protocol {
     VLESS,
     VMess,
@@ -44,7 +45,7 @@ impl std::fmt::Display for Protocol {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Transmission {
     TCP,
     WebSocket,
@@ -65,7 +66,7 @@ impl Transmission {
             Transmission::SplitHTTP => "SplitHTTP",
         }
     }
-    
+
     pub fn as_type_str(&self) -> &'static str {
         match self {
             Transmission::TCP => "tcp",
@@ -84,7 +85,7 @@ impl std::fmt::Display for Transmission {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Security {
     TLS,
     Reality,
@@ -124,51 +125,51 @@ impl ConfigGenerator {
     pub fn new() -> Self {
         Self {
             popular_snis: vec![
-                "www.speedtest.net".to_string(),
-                "www.yahoo.com".to_string(),
-                "www.cloudflare.com".to_string(),
-                "www.google.com".to_string(),
-                "www.microsoft.com".to_string(),
-                "www.bing.com".to_string(),
-                "www.booking.com".to_string(),
-                "www.cisco.com".to_string(),
-                "www.wikipedia.org".to_string(),
-                "discord.com".to_string(),
-                "telegram.org".to_string(),
-                "www.ubuntu.com".to_string(),
-                "www.nvidia.com".to_string(),
-                "www.amd.com".to_string(),
-                "aws.amazon.com".to_string(),
+                "www.speedtest.net".into(),
+                "www.yahoo.com".into(),
+                "www.cloudflare.com".into(),
+                "www.google.com".into(),
+                "www.microsoft.com".into(),
+                "www.bing.com".into(),
+                "www.booking.com".into(),
+                "www.cisco.com".into(),
+                "www.wikipedia.org".into(),
+                "discord.com".into(),
+                "telegram.org".into(),
+                "www.ubuntu.com".into(),
+                "www.nvidia.com".into(),
+                "www.amd.com".into(),
+                "aws.amazon.com".into(),
             ],
             popular_paths: vec![
-                "/".to_string(),
-                "/ws".to_string(),
-                "/vless".to_string(),
-                "/vmess".to_string(),
-                "/api".to_string(),
-                "/download".to_string(),
-                "/upgrade".to_string(),
-                "/socket".to_string(),
-                "/graphql".to_string(),
-                "/cdn-cgi/trace".to_string(),
+                "/".into(),
+                "/ws".into(),
+                "/vless".into(),
+                "/vmess".into(),
+                "/api".into(),
+                "/download".into(),
+                "/upgrade".into(),
+                "/socket".into(),
+                "/graphql".into(),
+                "/cdn-cgi/trace".into(),
             ],
             fingerprints: vec![
-                "chrome".to_string(),
-                "firefox".to_string(),
-                "safari".to_string(),
-                "ios".to_string(),
-                "android".to_string(),
-                "edge".to_string(),
-                "360".to_string(),
-                "qq".to_string(),
-                "random".to_string(),
-                "randomized".to_string(),
+                "chrome".into(),
+                "firefox".into(),
+                "safari".into(),
+                "ios".into(),
+                "android".into(),
+                "edge".into(),
+                "360".into(),
+                "qq".into(),
+                "random".into(),
+                "randomized".into(),
             ],
             alpn_combinations: vec![
-                vec!["h2".to_string(), "http/1.1".to_string()],
-                vec!["h2".to_string()],
-                vec!["http/1.1".to_string()],
-                vec!["h3".to_string()],
+                vec!["h2".into(), "http/1.1".into()],
+                vec!["h2".into()],
+                vec!["http/1.1".into()],
+                vec!["h3".into()],
             ],
         }
     }
@@ -177,7 +178,6 @@ impl ConfigGenerator {
         let mut configs = Vec::new();
         let mut rng = rand::thread_rng();
 
-        // Priority configurations (most effective combinations)
         let priority_combinations = vec![
             (Protocol::VLESS, Transmission::XHTTP, Security::Reality),
             (Protocol::VLESS, Transmission::GRPC, Security::Reality),
@@ -202,10 +202,9 @@ impl ConfigGenerator {
             configs.push(config);
         }
 
-        // Additional variations for comprehensive coverage
         for protocol in &[Protocol::VLESS, Protocol::VMess, Protocol::Trojan] {
             for transmission in &[Transmission::TCP, Transmission::WebSocket] {
-                let security = if matches!(protocol, Protocol::VLESS) {
+                let security = if *protocol == Protocol::VLESS {
                     Security::Reality
                 } else {
                     Security::TLS
@@ -238,12 +237,13 @@ impl ConfigGenerator {
         let sni = self.popular_snis[rng.gen_range(0..self.popular_snis.len())].clone();
         let alpn = self.alpn_combinations[rng.gen_range(0..self.alpn_combinations.len())].clone();
         let fingerprint = self.fingerprints[rng.gen_range(0..self.fingerprints.len())].clone();
-        
+
         let id = self.generate_uuid();
-        
+
         let (path, host, service_name) = match transmission {
             Transmission::WebSocket | Transmission::HTTPUpgrade | Transmission::SplitHTTP => {
-                let path = Some(self.popular_paths[rng.gen_range(0..self.popular_paths.len())].clone());
+                let path =
+                    Some(self.popular_paths[rng.gen_range(0..self.popular_paths.len())].clone());
                 let host = Some(sni.clone());
                 (path, host, None)
             }
@@ -259,7 +259,7 @@ impl ConfigGenerator {
             Transmission::TCP => (None, None, None),
         };
 
-        let (public_key, short_id) = if matches!(security, Security::Reality) {
+        let (public_key, short_id) = if security == Security::Reality {
             (
                 Some(self.generate_public_key()),
                 Some(self.generate_short_id(rng)),
@@ -293,17 +293,13 @@ impl ConfigGenerator {
     fn generate_public_key(&self) -> String {
         let mut rng = rand::thread_rng();
         let bytes: Vec<u8> = (0..32).map(|_| rng.gen()).collect();
-        use base64::{Engine as _, engine::general_purpose};
         general_purpose::STANDARD.encode(&bytes)
     }
 
     fn generate_short_id(&self, rng: &mut impl Rng) -> String {
         let hex_chars: Vec<char> = "0123456789abcdef".chars().collect();
         (0..8)
-            .map(|_| {
-                let idx = rng.gen_range(0..hex_chars.len());
-                hex_chars[idx]
-            })
+            .map(|_| hex_chars[rng.gen_range(0..hex_chars.len())])
             .collect()
     }
 
@@ -331,23 +327,23 @@ impl ConfigGenerator {
             params.push(format!("alpn={}", config.alpn.join(",")));
         }
 
-        if let Some(path) = &config.path {
+        if let Some(ref path) = config.path {
             params.push(format!("path={}", urlencoding::encode(path)));
         }
 
-        if let Some(host) = &config.host {
+        if let Some(ref host) = config.host {
             params.push(format!("host={}", host));
         }
 
-        if let Some(service_name) = &config.service_name {
+        if let Some(ref service_name) = config.service_name {
             params.push(format!("serviceName={}", service_name));
         }
 
-        if let Some(public_key) = &config.public_key {
+        if let Some(ref public_key) = config.public_key {
             params.push(format!("pbk={}", public_key));
         }
 
-        if let Some(short_id) = &config.short_id {
+        if let Some(ref short_id) = config.short_id {
             params.push(format!("sid={}", short_id));
         }
 
@@ -387,14 +383,16 @@ impl ConfigGenerator {
             "type": "none",
             "host": config.host.clone().unwrap_or_default(),
             "path": config.path.clone().unwrap_or_default(),
-            "tls": if matches!(config.security, Security::TLS) { "tls" } else { "" },
+            "tls": if config.security == Security::TLS { "tls" } else { "" },
             "sni": config.sni,
             "alpn": config.alpn.join(","),
             "fp": config.fingerprint,
         });
 
-        use base64::{Engine as _, engine::general_purpose};
-        format!("vmess://{}", general_purpose::STANDARD.encode(vmess_json.to_string()))
+        format!(
+            "vmess://{}",
+            general_purpose::STANDARD.encode(vmess_json.to_string())
+        )
     }
 
     fn trojan_to_link(&self, config: &ProxyConfig) -> String {
@@ -415,11 +413,11 @@ impl ConfigGenerator {
             params.push(format!("alpn={}", config.alpn.join(",")));
         }
 
-        if let Some(path) = &config.path {
+        if let Some(ref path) = config.path {
             params.push(format!("path={}", urlencoding::encode(path)));
         }
 
-        if let Some(host) = &config.host {
+        if let Some(ref host) = config.host {
             params.push(format!("host={}", host));
         }
 
@@ -443,9 +441,8 @@ impl ConfigGenerator {
             &config.id
         };
         let userinfo = format!("{}:{}", method, password);
-        use base64::{Engine as _, engine::general_purpose};
         let encoded = general_purpose::STANDARD.encode(&userinfo);
-        
+
         format!(
             "ss://{}@{}:{}#SS_{}",
             encoded,
