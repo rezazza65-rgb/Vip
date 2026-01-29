@@ -2,7 +2,7 @@ use std::time::Duration;
 use tokio::time::timeout;
 use serde::{Deserialize, Serialize};
 
-use crate::generator::ProxyConfig;
+use crate::generator::{ProxyConfig, Protocol, Security};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestResult {
@@ -13,6 +13,7 @@ pub struct TestResult {
     pub test_timestamp: String,
 }
 
+#[derive(Clone)]
 pub struct ConfigTester {
     timeout_seconds: u64,
     max_concurrent: usize,
@@ -112,26 +113,19 @@ impl ConfigTester {
     }
 
     async fn test_protocol_handshake(&self, config: &ProxyConfig) -> Result<(), String> {
-        // This is a simplified version. In production, you would implement
-        // full protocol handshakes for each protocol type.
-        
         match config.protocol {
-            crate::generator::Protocol::VLESS => self.test_vless_handshake(config).await,
-            crate::generator::Protocol::VMess => self.test_vmess_handshake(config).await,
-            crate::generator::Protocol::Trojan => self.test_trojan_handshake(config).await,
-            crate::generator::Protocol::Shadowsocks => self.test_ss_handshake(config).await,
+            Protocol::VLESS => self.test_vless_handshake(config).await,
+            Protocol::VMess => self.test_vmess_handshake(config).await,
+            Protocol::Trojan => self.test_trojan_handshake(config).await,
+            Protocol::Shadowsocks => self.test_ss_handshake(config).await,
         }
     }
 
     async fn test_vless_handshake(&self, config: &ProxyConfig) -> Result<(), String> {
-        // Simulate VLESS protocol handshake
-        // In production, implement actual VLESS protocol verification
-        
         let timeout_duration = Duration::from_secs(self.timeout_seconds);
         
-        // Test TLS/Reality handshake for secure connections
         match &config.security {
-            crate::generator::Security::TLS | crate::generator::Security::Reality => {
+            Security::TLS | Security::Reality => {
                 match timeout(
                     timeout_duration,
                     self.test_tls_handshake(&config.address, config.port, &config.sni)
@@ -141,17 +135,13 @@ impl ConfigTester {
                     Err(_) => Err("TLS handshake timeout".to_string()),
                 }
             }
-            crate::generator::Security::None => {
-                // For non-TLS, TCP connection success is sufficient
-                Ok(())
-            }
+            Security::None => Ok(()),
         }
     }
 
     async fn test_vmess_handshake(&self, config: &ProxyConfig) -> Result<(), String> {
-        // Similar to VLESS but with VMess-specific verification
         match &config.security {
-            crate::generator::Security::TLS => {
+            Security::TLS => {
                 self.test_tls_handshake(&config.address, config.port, &config.sni)
                     .await
                     .map_err(|e| format!("VMess TLS handshake failed: {}", e))
@@ -161,15 +151,12 @@ impl ConfigTester {
     }
 
     async fn test_trojan_handshake(&self, config: &ProxyConfig) -> Result<(), String> {
-        // Trojan always uses TLS
         self.test_tls_handshake(&config.address, config.port, &config.sni)
             .await
             .map_err(|e| format!("Trojan TLS handshake failed: {}", e))
     }
 
     async fn test_ss_handshake(&self, _config: &ProxyConfig) -> Result<(), String> {
-        // Shadowsocks doesn't require TLS handshake
-        // TCP connection success is sufficient
         Ok(())
     }
 
@@ -203,16 +190,7 @@ impl ConfigTester {
     }
 }
 
-impl Clone for ConfigTester {
-    fn clone(&self) -> Self {
-        Self {
-            timeout_seconds: self.timeout_seconds,
-            max_concurrent: self.max_concurrent,
-        }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestStatistics {
     pub total_configs: usize,
     pub working_configs: usize,
@@ -223,8 +201,26 @@ pub struct TestStatistics {
     pub slowest_response_time_ms: Option<u64>,
 }
 
+impl Default for TestStatistics {
+    fn default() -> Self {
+        Self {
+            total_configs: 0,
+            working_configs: 0,
+            failed_configs: 0,
+            success_rate: 0.0,
+            average_response_time_ms: 0.0,
+            fastest_response_time_ms: None,
+            slowest_response_time_ms: None,
+        }
+    }
+}
+
 impl TestStatistics {
     pub fn from_results(results: &[TestResult]) -> Self {
+        if results.is_empty() {
+            return Self::default();
+        }
+
         let total = results.len();
         let working = results.iter().filter(|r| r.is_working).count();
         let failed = total - working;
