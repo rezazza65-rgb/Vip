@@ -13,20 +13,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🚀 Advanced Proxy Configuration Generator");
     println!("==========================================\n");
 
+    // Ensure output directory exists
+    fs::create_dir_all("sub/configs/qr_codes")?;
+
     // Read proxy IPs from the scanner output
     let proxies = read_proxy_list("sub/ProxyIP-Daily.md")?;
     println!("📡 Found {} live proxies from scanner\n", proxies.len());
 
-    if proxies.is_empty() {
-        println!("⚠️  No proxies found. Exiting.");
-        return Ok(());
-    }
-
     // Initialize components
     let config_generator = ConfigGenerator::new();
-    let config_tester = ConfigTester::new(10, 50); // 10 sec timeout, 50 concurrent
     let output_generator = OutputGenerator::new();
     let subscription_manager = SubscriptionManager::new(None);
+
+    if proxies.is_empty() {
+        println!("⚠️  No proxies found. Creating empty output files...");
+        
+        // Create empty output bundle
+        let empty_bundle = output_generator.create_empty_output();
+        
+        // Save empty files to disk
+        let output_dir = "sub/configs";
+        output_generator.save_to_files(&empty_bundle, output_dir)?;
+        
+        println!("\n✅ Empty output files created successfully!");
+        println!("   Location: {}/", output_dir);
+        println!("\n📝 Note: These files will be populated once live proxies are detected.");
+        
+        return Ok(());
+    }
 
     // Generate configurations for all proxies
     println!("⚙️  Generating configurations...");
@@ -41,6 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Test all configurations
     println!("🔍 Testing configurations (this may take a while)...");
+    let config_tester = ConfigTester::new(10, 50); // 10 sec timeout, 50 concurrent
     let test_results = config_tester.test_configs(all_configs).await;
     
     let working_count = test_results.iter().filter(|r| r.is_working).count();
@@ -48,7 +63,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
              working_count, test_results.len());
 
     // Generate output
-    println!("📝 Generating output files...");
+    println!("📁 Generating output files...");
     let output_bundle = output_generator.generate_output(test_results);
     
     // Save to files
@@ -79,6 +94,13 @@ struct ProxyInfo {
 }
 
 fn read_proxy_list(file_path: &str) -> Result<Vec<ProxyInfo>, Box<dyn std::error::Error>> {
+    // Check if file exists
+    if !std::path::Path::new(file_path).exists() {
+        println!("⚠️  Scanner output file not found: {}", file_path);
+        println!("   Creating empty proxy list...");
+        return Ok(Vec::new());
+    }
+
     let content = fs::read_to_string(file_path)?;
     let mut proxies = Vec::new();
 
