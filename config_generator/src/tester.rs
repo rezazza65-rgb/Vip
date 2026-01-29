@@ -1,6 +1,6 @@
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tokio::time::timeout;
-use serde::{Deserialize, Serialize};
 
 use crate::generator::{ProxyConfig, Protocol, Security};
 
@@ -33,12 +33,9 @@ impl ConfigTester {
 
         for config in configs {
             let tester = self.clone();
-            let task = tokio::spawn(async move {
-                tester.test_single_config(config).await
-            });
+            let task = tokio::spawn(async move { tester.test_single_config(config).await });
             tasks.push(task);
 
-            // Control concurrency
             if tasks.len() >= self.max_concurrent {
                 let chunk_results: Vec<TestResult> = futures::future::join_all(tasks.drain(..))
                     .await
@@ -49,7 +46,6 @@ impl ConfigTester {
             }
         }
 
-        // Process remaining tasks
         let remaining_results: Vec<TestResult> = futures::future::join_all(tasks)
             .await
             .into_iter()
@@ -64,16 +60,13 @@ impl ConfigTester {
         let start = std::time::Instant::now();
         let timestamp = chrono::Utc::now().to_rfc3339();
 
-        // Test basic TCP connectivity first
         let tcp_result = self.test_tcp_connection(&config).await;
 
         match tcp_result {
             Ok(()) => {
-                // TCP connection successful, now test protocol-specific
                 let protocol_result = self.test_protocol_handshake(&config).await;
-                
                 let elapsed = start.elapsed().as_millis() as u64;
-                
+
                 match protocol_result {
                     Ok(()) => TestResult {
                         config,
@@ -117,19 +110,21 @@ impl ConfigTester {
             Protocol::VLESS => self.test_vless_handshake(config).await,
             Protocol::VMess => self.test_vmess_handshake(config).await,
             Protocol::Trojan => self.test_trojan_handshake(config).await,
-            Protocol::Shadowsocks => self.test_ss_handshake(config).await,
+            Protocol::Shadowsocks => Ok(()),
         }
     }
 
     async fn test_vless_handshake(&self, config: &ProxyConfig) -> Result<(), String> {
         let timeout_duration = Duration::from_secs(self.timeout_seconds);
-        
+
         match &config.security {
             Security::TLS | Security::Reality => {
                 match timeout(
                     timeout_duration,
-                    self.test_tls_handshake(&config.address, config.port, &config.sni)
-                ).await {
+                    self.test_tls_handshake(&config.address, config.port, &config.sni),
+                )
+                .await
+                {
                     Ok(Ok(())) => Ok(()),
                     Ok(Err(e)) => Err(format!("TLS handshake failed: {}", e)),
                     Err(_) => Err("TLS handshake timeout".to_string()),
@@ -140,13 +135,12 @@ impl ConfigTester {
     }
 
     async fn test_vmess_handshake(&self, config: &ProxyConfig) -> Result<(), String> {
-        match &config.security {
-            Security::TLS => {
-                self.test_tls_handshake(&config.address, config.port, &config.sni)
-                    .await
-                    .map_err(|e| format!("VMess TLS handshake failed: {}", e))
-            }
-            _ => Ok(()),
+        if config.security == Security::TLS {
+            self.test_tls_handshake(&config.address, config.port, &config.sni)
+                .await
+                .map_err(|e| format!("VMess TLS handshake failed: {}", e))
+        } else {
+            Ok(())
         }
     }
 
@@ -154,10 +148,6 @@ impl ConfigTester {
         self.test_tls_handshake(&config.address, config.port, &config.sni)
             .await
             .map_err(|e| format!("Trojan TLS handshake failed: {}", e))
-    }
-
-    async fn test_ss_handshake(&self, _config: &ProxyConfig) -> Result<(), String> {
-        Ok(())
     }
 
     async fn test_tls_handshake(
@@ -173,7 +163,7 @@ impl ConfigTester {
             .danger_accept_invalid_certs(true)
             .build()
             .map_err(|e| format!("TLS connector build failed: {}", e))?;
-        
+
         let connector = TokioTlsConnector::from(connector);
 
         let addr = format!("{}:{}", address, port);
@@ -181,7 +171,7 @@ impl ConfigTester {
             .await
             .map_err(|e| format!("TCP connect failed: {}", e))?;
 
-        connector
+        let _ = connector
             .connect(sni, stream)
             .await
             .map_err(|e| format!("TLS connect failed: {}", e))?;
