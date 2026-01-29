@@ -1,1 +1,7 @@
-# No Trojan configurations available
+trojan://e1678f1b-ef4d-4b48-ad32-ccd7b0899042@104.21.48.136:443?type=tcp&security=tls&sni=www.bing.com&fp=360&alpn=h2#Trojan_tcp_104.21.48.136
+
+trojan://d0e8e23a-0b32-4b67-a5d3-6ac2dbbd1057@172.67.182.87:443?type=grpc&security=tls&sni=discord.com&fp=android&alpn=h3#Trojan_grpc_172.67.182.87
+
+trojan://6fb85d71-c4cc-4e1e-809c-4292884775bf@172.67.182.87:443?type=tcp&security=tls&sni=discord.com&fp=chrome&alpn=h2,http/1.1#Trojan_tcp_172.67.182.87
+
+trojan://80892643-e1c1-49b8-a85b-668b32c06df8@141.101.120.14:443?type=ws&security=tls&sni=www.speedtest.net&fp=ios&alpn=h2&path=%2Fdownload&host=www.speedtest.net#Trojan_ws_141.101.120.14
