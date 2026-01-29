@@ -2,14 +2,13 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tokio::time::timeout;
 
-use crate::generator::{ProxyConfig, Protocol, Security};
+use crate::generator::ProxyConfig;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct TestResult {
     pub config: ProxyConfig,
     pub is_working: bool,
     pub response_time_ms: Option<u64>,
-    pub error: Option<String>,
 }
 
 #[derive(Clone)]
@@ -23,18 +22,14 @@ impl ConfigTester {
         Self { timeout_secs, concurrent }
     }
 
-    pub async fn test_configs(&self, configs: Vec<ProxyConfig>) -> Vec<TestResult> {
+    pub async fn test_all(&self, configs: Vec<ProxyConfig>) -> Vec<TestResult> {
         let total = configs.len();
-        println!("   Testing {} configs ({}s timeout)...", total, self.timeout_secs);
-
         let mut results = Vec::new();
         let mut tasks = Vec::new();
-        let mut done = 0;
 
         for config in configs {
             let tester = self.clone();
-            let task = tokio::spawn(async move { tester.test_one(config).await });
-            tasks.push(task);
+            tasks.push(tokio::spawn(async move { tester.test_one(config).await }));
 
             if tasks.len() >= self.concurrent {
                 let batch: Vec<TestResult> = futures::future::join_all(tasks.drain(..))
@@ -42,10 +37,6 @@ impl ConfigTester {
                     .into_iter()
                     .filter_map(|r| r.ok())
                     .collect();
-
-                done += batch.len();
-                let working = batch.iter().filter(|r| r.is_working).count();
-                println!("   Progress: {}/{} ({} working)", done, total, working);
                 results.extend(batch);
             }
         }
@@ -65,59 +56,41 @@ impl ConfigTester {
 
     async fn test_one(&self, config: ProxyConfig) -> TestResult {
         let start = std::time::Instant::now();
-
-        // TCP test
         let addr = format!("{}:{}", config.address, config.port);
-        let tcp_result = timeout(
+
+        let result = timeout(
             Duration::from_secs(self.timeout_secs),
             tokio::net::TcpStream::connect(&addr)
         ).await;
 
-        match tcp_result {
+        match result {
             Ok(Ok(_)) => {
-                // TLS test if needed
-                if config.security == Security::TLS || config.security == Security::Reality {
-                    match self.test_tls(&config).await {
-                        Ok(_) => TestResult {
-                            config,
-                            is_working: true,
-                            response_time_ms: Some(start.elapsed().as_millis() as u64),
-                            error: None,
-                        },
-                        Err(e) => TestResult {
-                            config,
-                            is_working: false,
-                            response_time_ms: Some(start.elapsed().as_millis() as u64),
-                            error: Some(e),
-                        },
-                    }
-                } else {
+                // TLS test
+                if let Ok(_) = self.test_tls(&config).await {
                     TestResult {
                         config,
                         is_working: true,
                         response_time_ms: Some(start.elapsed().as_millis() as u64),
-                        error: None,
+                    }
+                } else {
+                    TestResult {
+                        config,
+                        is_working: false,
+                        response_time_ms: Some(start.elapsed().as_millis() as u64),
                     }
                 }
             }
-            Ok(Err(e)) => TestResult {
+            _ => TestResult {
                 config,
                 is_working: false,
                 response_time_ms: None,
-                error: Some(format!("TCP: {}", e)),
-            },
-            Err(_) => TestResult {
-                config,
-                is_working: false,
-                response_time_ms: None,
-                error: Some("Timeout".to_string()),
             },
         }
     }
 
     async fn test_tls(&self, config: &ProxyConfig) -> Result<(), String> {
         use tokio_native_tls::native_tls::TlsConnector;
-        use tokio_native_tls::TlsConnector as TokioTlsConnector;
+        use tokio_native_tls::TlsConnector as TokioTls;
 
         let connector = TlsConnector::builder()
             .danger_accept_invalid_certs(true)
@@ -125,7 +98,7 @@ impl ConfigTester {
             .build()
             .map_err(|e| e.to_string())?;
 
-        let connector = TokioTlsConnector::from(connector);
+        let connector = TokioTls::from(connector);
         let addr = format!("{}:{}", config.address, config.port);
 
         let stream = tokio::net::TcpStream::connect(&addr)
@@ -140,7 +113,7 @@ impl ConfigTester {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TestStatistics {
     pub total_configs: usize,
     pub working_configs: usize,
@@ -149,20 +122,6 @@ pub struct TestStatistics {
     pub average_response_time_ms: f64,
     pub fastest_response_time_ms: Option<u64>,
     pub slowest_response_time_ms: Option<u64>,
-}
-
-impl Default for TestStatistics {
-    fn default() -> Self {
-        Self {
-            total_configs: 0,
-            working_configs: 0,
-            failed_configs: 0,
-            success_rate: 0.0,
-            average_response_time_ms: 0.0,
-            fastest_response_time_ms: None,
-            slowest_response_time_ms: None,
-        }
-    }
 }
 
 impl TestStatistics {
