@@ -9,198 +9,134 @@ pub struct TestResult {
     pub config: ProxyConfig,
     pub is_working: bool,
     pub response_time_ms: Option<u64>,
-    pub error_message: Option<String>,
-    pub test_timestamp: String,
+    pub error: Option<String>,
 }
 
 #[derive(Clone)]
 pub struct ConfigTester {
-    timeout_seconds: u64,
-    max_concurrent: usize,
+    timeout_secs: u64,
+    concurrent: usize,
 }
 
 impl ConfigTester {
-    pub fn new(timeout_seconds: u64, max_concurrent: usize) -> Self {
-        Self {
-            timeout_seconds,
-            max_concurrent,
-        }
+    pub fn new(timeout_secs: u64, concurrent: usize) -> Self {
+        Self { timeout_secs, concurrent }
     }
 
     pub async fn test_configs(&self, configs: Vec<ProxyConfig>) -> Vec<TestResult> {
         let total = configs.len();
-        println!("   Testing {} configurations with {}s timeout, {} concurrent...", 
-                 total, self.timeout_seconds, self.max_concurrent);
-        
+        println!("   Testing {} configs ({}s timeout)...", total, self.timeout_secs);
+
         let mut results = Vec::new();
         let mut tasks = Vec::new();
-        let mut completed = 0;
-        let mut working_so_far = 0;
+        let mut done = 0;
 
         for config in configs {
             let tester = self.clone();
-            let task = tokio::spawn(async move { tester.test_single_config(config).await });
+            let task = tokio::spawn(async move { tester.test_one(config).await });
             tasks.push(task);
 
-            if tasks.len() >= self.max_concurrent {
-                let chunk_results: Vec<TestResult> = futures::future::join_all(tasks.drain(..))
+            if tasks.len() >= self.concurrent {
+                let batch: Vec<TestResult> = futures::future::join_all(tasks.drain(..))
                     .await
                     .into_iter()
                     .filter_map(|r| r.ok())
                     .collect();
-                
-                completed += chunk_results.len();
-                working_so_far += chunk_results.iter().filter(|r| r.is_working).count();
-                
-                // Progress update every batch
-                let percent = (completed as f64 / total as f64 * 100.0) as u32;
-                println!("   Progress: {}/{} ({}%) - {} working", completed, total, percent, working_so_far);
-                
-                results.extend(chunk_results);
+
+                done += batch.len();
+                let working = batch.iter().filter(|r| r.is_working).count();
+                println!("   Progress: {}/{} ({} working)", done, total, working);
+                results.extend(batch);
             }
         }
 
-        // Process remaining tasks
+        // Remaining
         if !tasks.is_empty() {
-            let remaining_results: Vec<TestResult> = futures::future::join_all(tasks)
+            let batch: Vec<TestResult> = futures::future::join_all(tasks)
                 .await
                 .into_iter()
                 .filter_map(|r| r.ok())
                 .collect();
-            
-            working_so_far += remaining_results.iter().filter(|r| r.is_working).count();
-            results.extend(remaining_results);
+            results.extend(batch);
         }
-        
-        println!("   Completed: {}/{} configs tested, {} working", results.len(), total, working_so_far);
+
         results
     }
 
-    async fn test_single_config(&self, config: ProxyConfig) -> TestResult {
+    async fn test_one(&self, config: ProxyConfig) -> TestResult {
         let start = std::time::Instant::now();
-        let timestamp = chrono::Utc::now().to_rfc3339();
 
-        // First test: TCP connection
-        let tcp_result = self.test_tcp_connection(&config).await;
+        // TCP test
+        let addr = format!("{}:{}", config.address, config.port);
+        let tcp_result = timeout(
+            Duration::from_secs(self.timeout_secs),
+            tokio::net::TcpStream::connect(&addr)
+        ).await;
 
         match tcp_result {
-            Ok(()) => {
-                // Second test: Protocol-specific handshake
-                let protocol_result = self.test_protocol_handshake(&config).await;
-                let elapsed = start.elapsed().as_millis() as u64;
-
-                match protocol_result {
-                    Ok(()) => TestResult {
+            Ok(Ok(_)) => {
+                // TLS test if needed
+                if config.security == Security::TLS || config.security == Security::Reality {
+                    match self.test_tls(&config).await {
+                        Ok(_) => TestResult {
+                            config,
+                            is_working: true,
+                            response_time_ms: Some(start.elapsed().as_millis() as u64),
+                            error: None,
+                        },
+                        Err(e) => TestResult {
+                            config,
+                            is_working: false,
+                            response_time_ms: Some(start.elapsed().as_millis() as u64),
+                            error: Some(e),
+                        },
+                    }
+                } else {
+                    TestResult {
                         config,
                         is_working: true,
-                        response_time_ms: Some(elapsed),
-                        error_message: None,
-                        test_timestamp: timestamp,
-                    },
-                    Err(e) => TestResult {
-                        config,
-                        is_working: false,
-                        response_time_ms: Some(elapsed),
-                        error_message: Some(e),
-                        test_timestamp: timestamp,
-                    },
+                        response_time_ms: Some(start.elapsed().as_millis() as u64),
+                        error: None,
+                    }
                 }
             }
-            Err(e) => TestResult {
+            Ok(Err(e)) => TestResult {
                 config,
                 is_working: false,
                 response_time_ms: None,
-                error_message: Some(e),
-                test_timestamp: timestamp,
+                error: Some(format!("TCP: {}", e)),
+            },
+            Err(_) => TestResult {
+                config,
+                is_working: false,
+                response_time_ms: None,
+                error: Some("Timeout".to_string()),
             },
         }
     }
 
-    async fn test_tcp_connection(&self, config: &ProxyConfig) -> Result<(), String> {
-        let addr = format!("{}:{}", config.address, config.port);
-        let timeout_duration = Duration::from_secs(self.timeout_seconds);
-
-        match timeout(timeout_duration, tokio::net::TcpStream::connect(&addr)).await {
-            Ok(Ok(_stream)) => Ok(()),
-            Ok(Err(e)) => Err(format!("TCP: {}", e)),
-            Err(_) => Err("TCP timeout".to_string()),
-        }
-    }
-
-    async fn test_protocol_handshake(&self, config: &ProxyConfig) -> Result<(), String> {
-        match config.protocol {
-            Protocol::VLESS => self.test_vless_handshake(config).await,
-            Protocol::VMess => self.test_vmess_handshake(config).await,
-            Protocol::Trojan => self.test_trojan_handshake(config).await,
-            Protocol::Shadowsocks => Ok(()),
-        }
-    }
-
-    async fn test_vless_handshake(&self, config: &ProxyConfig) -> Result<(), String> {
-        let timeout_duration = Duration::from_secs(self.timeout_seconds);
-
-        match &config.security {
-            Security::TLS | Security::Reality => {
-                match timeout(
-                    timeout_duration,
-                    self.test_tls_handshake(&config.address, config.port, &config.sni),
-                )
-                .await
-                {
-                    Ok(Ok(())) => Ok(()),
-                    Ok(Err(e)) => Err(format!("TLS: {}", e)),
-                    Err(_) => Err("TLS timeout".to_string()),
-                }
-            }
-            Security::None => Ok(()),
-        }
-    }
-
-    async fn test_vmess_handshake(&self, config: &ProxyConfig) -> Result<(), String> {
-        if config.security == Security::TLS {
-            self.test_tls_handshake(&config.address, config.port, &config.sni)
-                .await
-                .map_err(|e| format!("VMess TLS: {}", e))
-        } else {
-            Ok(())
-        }
-    }
-
-    async fn test_trojan_handshake(&self, config: &ProxyConfig) -> Result<(), String> {
-        self.test_tls_handshake(&config.address, config.port, &config.sni)
-            .await
-            .map_err(|e| format!("Trojan TLS: {}", e))
-    }
-
-    async fn test_tls_handshake(
-        &self,
-        address: &str,
-        port: u16,
-        sni: &str,
-    ) -> Result<(), String> {
+    async fn test_tls(&self, config: &ProxyConfig) -> Result<(), String> {
         use tokio_native_tls::native_tls::TlsConnector;
         use tokio_native_tls::TlsConnector as TokioTlsConnector;
 
         let connector = TlsConnector::builder()
             .danger_accept_invalid_certs(true)
             .danger_accept_invalid_hostnames(true)
-            .use_sni(true)
             .build()
-            .map_err(|e| format!("TLS build: {}", e))?;
+            .map_err(|e| e.to_string())?;
 
         let connector = TokioTlsConnector::from(connector);
+        let addr = format!("{}:{}", config.address, config.port);
 
-        let addr = format!("{}:{}", address, port);
-        
-        let stream = match tokio::net::TcpStream::connect(&addr).await {
-            Ok(s) => s,
-            Err(e) => return Err(format!("Connect: {}", e)),
-        };
+        let stream = tokio::net::TcpStream::connect(&addr)
+            .await
+            .map_err(|e| e.to_string())?;
 
-        match connector.connect(sni, stream).await {
-            Ok(_) => Ok(()),
-            Err(e) => Err(format!("Handshake: {}", e)),
-        }
+        connector.connect(&config.sni, stream)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        Ok(())
     }
 }
 
@@ -237,37 +173,24 @@ impl TestStatistics {
 
         let total = results.len();
         let working = results.iter().filter(|r| r.is_working).count();
-        let failed = total - working;
-
-        let response_times: Vec<u64> = results
-            .iter()
+        
+        let times: Vec<u64> = results.iter()
             .filter(|r| r.is_working)
             .filter_map(|r| r.response_time_ms)
             .collect();
 
-        let avg_response_time = if !response_times.is_empty() {
-            response_times.iter().sum::<u64>() as f64 / response_times.len() as f64
-        } else {
-            0.0
-        };
-
-        let fastest = response_times.iter().min().copied();
-        let slowest = response_times.iter().max().copied();
-
-        let success_rate = if total > 0 {
-            (working as f64 / total as f64) * 100.0
-        } else {
-            0.0
+        let avg = if times.is_empty() { 0.0 } else {
+            times.iter().sum::<u64>() as f64 / times.len() as f64
         };
 
         Self {
             total_configs: total,
             working_configs: working,
-            failed_configs: failed,
-            success_rate,
-            average_response_time_ms: avg_response_time,
-            fastest_response_time_ms: fastest,
-            slowest_response_time_ms: slowest,
+            failed_configs: total - working,
+            success_rate: (working as f64 / total as f64) * 100.0,
+            average_response_time_ms: avg,
+            fastest_response_time_ms: times.iter().min().copied(),
+            slowest_response_time_ms: times.iter().max().copied(),
         }
     }
 }
