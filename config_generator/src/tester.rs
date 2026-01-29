@@ -28,8 +28,12 @@ impl ConfigTester {
     }
 
     pub async fn test_configs(&self, configs: Vec<ProxyConfig>) -> Vec<TestResult> {
+        let total = configs.len();
+        println!("   Testing {} configurations with {}s timeout...", total, self.timeout_seconds);
+        
         let mut results = Vec::new();
         let mut tasks = Vec::new();
+        let mut completed = 0;
 
         for config in configs {
             let tester = self.clone();
@@ -42,17 +46,26 @@ impl ConfigTester {
                     .into_iter()
                     .filter_map(|r| r.ok())
                     .collect();
+                
+                completed += chunk_results.len();
+                let working = chunk_results.iter().filter(|r| r.is_working).count();
+                print!("\r   Progress: {}/{} tested, {} working so far...", completed, total, working);
+                
                 results.extend(chunk_results);
             }
         }
 
-        let remaining_results: Vec<TestResult> = futures::future::join_all(tasks)
-            .await
-            .into_iter()
-            .filter_map(|r| r.ok())
-            .collect();
-        results.extend(remaining_results);
-
+        // Process remaining tasks
+        if !tasks.is_empty() {
+            let remaining_results: Vec<TestResult> = futures::future::join_all(tasks)
+                .await
+                .into_iter()
+                .filter_map(|r| r.ok())
+                .collect();
+            results.extend(remaining_results);
+        }
+        
+        println!(); // New line after progress
         results
     }
 
@@ -60,10 +73,12 @@ impl ConfigTester {
         let start = std::time::Instant::now();
         let timestamp = chrono::Utc::now().to_rfc3339();
 
+        // First test: TCP connection
         let tcp_result = self.test_tcp_connection(&config).await;
 
         match tcp_result {
             Ok(()) => {
+                // Second test: Protocol-specific handshake
                 let protocol_result = self.test_protocol_handshake(&config).await;
                 let elapsed = start.elapsed().as_millis() as u64;
 
@@ -110,7 +125,7 @@ impl ConfigTester {
             Protocol::VLESS => self.test_vless_handshake(config).await,
             Protocol::VMess => self.test_vmess_handshake(config).await,
             Protocol::Trojan => self.test_trojan_handshake(config).await,
-            Protocol::Shadowsocks => Ok(()),
+            Protocol::Shadowsocks => Ok(()), // SS doesn't have a TLS handshake typically
         }
     }
 
@@ -161,6 +176,7 @@ impl ConfigTester {
 
         let connector = TlsConnector::builder()
             .danger_accept_invalid_certs(true)
+            .danger_accept_invalid_hostnames(true)
             .build()
             .map_err(|e| format!("TLS connector build failed: {}", e))?;
 
@@ -217,6 +233,7 @@ impl TestStatistics {
 
         let response_times: Vec<u64> = results
             .iter()
+            .filter(|r| r.is_working)
             .filter_map(|r| r.response_time_ms)
             .collect();
 
