@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::Path;
+use std::env;
 
 mod generator;
 mod output;
@@ -9,251 +10,311 @@ use generator::ConfigGenerator;
 use output::{OutputGenerator, SubscriptionManager};
 use tester::ConfigTester;
 
-const SCANNER_FILE: &str = "sub/ProxyIP-Daily.md";
-const OUTPUT_DIR: &str = "sub/configs";
-const DEFAULT_PORT: u16 = 443;
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("🚀 Proxy Configuration Generator");
-    println!("=================================\n");
+    println!("🚀 Advanced Proxy Configuration Generator");
+    println!("==========================================\n");
 
-    // Create output directories
-    fs::create_dir_all(OUTPUT_DIR)?;
-    fs::create_dir_all(format!("{}/qr_codes", OUTPUT_DIR))?;
+    match env::current_dir() {
+        Ok(path) => println!("📍 Current working directory: {}", path.display()),
+        Err(e) => println!("⚠️ Could not get current directory: {}", e),
+    }
+    println!();
 
-    // Step 1: Read LIVE IPs from scanner
-    println!("📄 Reading scanner output: {}", SCANNER_FILE);
-    let live_ips = extract_live_ips_from_scanner(SCANNER_FILE);
-    
-    if live_ips.is_empty() {
-        println!("\n❌ No PROXY LIVE IPs found in scanner output!");
-        println!("   Make sure scanner has run and created the file.");
-        
-        // Create empty files
-        let output_gen = OutputGenerator::new();
-        output_gen.save_empty_files(OUTPUT_DIR)?;
+    let output_dir = "sub/configs";
+    let scanner_output = "sub/ProxyIP-Daily.md";
+
+    println!("📁 Creating output directories...");
+    fs::create_dir_all(output_dir).ok();
+    fs::create_dir_all(format!("{}/qr_codes", output_dir)).ok();
+    println!("   ✓ Directories ready\n");
+
+    // Read ONLY LIVE proxies (port 443)
+    let proxies = read_live_proxy_list(scanner_output);
+    println!("📡 Found {} LIVE proxies (port 443) from scanner\n", proxies.len());
+
+    let config_generator = ConfigGenerator::new();
+    let output_generator = OutputGenerator::new();
+    let subscription_manager = SubscriptionManager::new();
+
+    let mut all_configs = Vec::new();
+
+    if proxies.is_empty() {
+        println!("⚠️  No LIVE proxies found from scanner.");
+        println!("❌ Cannot generate configs without valid proxy IPs\n");
+        println!("💡 Please run the proxy scanner first to get live IPs");
         return Ok(());
     }
 
-    println!("\n✅ Found {} PROXY LIVE IPs:\n", live_ips.len());
-    for (i, ip) in live_ips.iter().enumerate() {
-        println!("   {}. {}", i + 1, ip);
-    }
-
-    // Step 2: Generate configs for each IP
-    println!("\n⚙️ Generating configurations...");
-    let config_gen = ConfigGenerator::new();
-    let mut all_configs = Vec::new();
-
-    for ip in &live_ips {
-        let configs = config_gen.generate_all_configs(ip, DEFAULT_PORT);
-        println!("   ✓ {} → {} configs", ip, configs.len());
+    println!("⚙️  Generating configurations for {} LIVE proxies...", proxies.len());
+    
+    for (idx, proxy) in proxies.iter().enumerate() {
+        let configs = config_generator.generate_configs(&proxy.ip, proxy.port);
+        println!("   [{}/{}] Generated {} configs for {} ({}ms) - {}", 
+                 idx + 1, proxies.len(), configs.len(), proxy.ip, 
+                 proxy.response_time, proxy.location);
         all_configs.extend(configs);
     }
 
-    println!("\n📊 Total: {} configs generated", all_configs.len());
+    let total_generated = all_configs.len();
+    println!("\n✅ Generated {} total configurations from {} LIVE IPs\n", 
+             total_generated, proxies.len());
 
-    // Step 3: Save all configs immediately
-    println!("\n📝 Saving configurations...");
-    let output_gen = OutputGenerator::new();
-    let bundle = output_gen.create_bundle(&all_configs);
-    output_gen.save_all_files(&bundle, OUTPUT_DIR)?;
+    // Save configs BEFORE testing
+    println!("📝 Saving all generated configs (before testing)...");
+    let pre_test_bundle = output_generator.create_bundle_from_configs(&all_configs);
+    output_generator.save_to_files(&pre_test_bundle, output_dir)?;
+    subscription_manager.save_qr_codes(&pre_test_bundle.all_configs, output_dir)?;
+    println!("   ✓ All configs saved\n");
 
-    // Step 4: Generate QR codes
-    println!("\n📱 Generating QR codes...");
-    let sub_manager = SubscriptionManager::new();
-    sub_manager.generate_qr_codes(&bundle.all_configs, OUTPUT_DIR)?;
+    // Test configs
+    println!("🔬 Testing configurations...");
+    let config_tester = ConfigTester::new(5, 20);
+    let test_results = config_tester.test_configs(all_configs.clone()).await;
 
-    // Step 5: Test configs (optional)
-    println!("\n🔬 Testing configurations...");
-    let tester = ConfigTester::new(5, 20);
-    let results = tester.test_all(all_configs).await;
-    
-    let working = results.iter().filter(|r| r.is_working).count();
-    println!("   ✓ {}/{} working", working, results.len());
+    let working_count = test_results.iter().filter(|r| r.is_working).count();
+    println!(
+        "\n✅ Testing complete: {}/{} working\n",
+        working_count,
+        test_results.len()
+    );
 
-    // Step 6: Save final results with test data
-    let final_bundle = output_gen.create_bundle_with_results(&results);
-    output_gen.save_all_files(&final_bundle, OUTPUT_DIR)?;
+    // Save final results with test data
+    println!("📝 Saving final results with test data...");
+    let final_bundle = output_generator.create_bundle_from_results(test_results);
+    output_generator.save_to_files(&final_bundle, output_dir)?;
+    subscription_manager.save_qr_codes(&final_bundle.all_configs, output_dir)?;
 
-    // Summary
-    println!("\n" + &"=".repeat(50));
-    println!("✨ COMPLETE!");
-    println!("{}", "=".repeat(50));
+    println!("\n✨ Success! Output saved to: {}/", output_dir);
     println!("\n📊 Summary:");
-    println!("   Live IPs from scanner: {}", live_ips.len());
-    println!("   Total configs: {}", final_bundle.all_configs.len());
-    println!("   Working configs: {}", working);
-    println!("\n📂 Output: {}/", OUTPUT_DIR);
-    
-    print_file_summary(OUTPUT_DIR);
+    println!("   Source LIVE IPs: {}", proxies.len());
+    println!("   Total Generated: {}", final_bundle.all_configs.len());
+    println!("   Working: {}", final_bundle.statistics.working_configs);
+    println!("   Failed: {}", final_bundle.statistics.failed_configs);
+    println!("   Success Rate: {:.2}%", final_bundle.statistics.success_rate);
+
+    println!();
+    list_output_files(output_dir);
 
     Ok(())
 }
 
-/// Extract ONLY IPs from lines containing "PROXY LIVE"
-fn extract_live_ips_from_scanner(file_path: &str) -> Vec<String> {
-    let path = Path::new(file_path);
+fn list_output_files(output_dir: &str) {
+    println!("📂 Output files:");
+
+    let files = vec![
+        "subscription.txt",
+        "working_subscription.txt",
+        "configs.json",
+        "all_configs.txt",
+        "config_links.txt",
+        "vless_configs.txt",
+        "vmess_configs.txt",
+        "trojan_configs.txt",
+        "shadowsocks_configs.txt",
+        "statistics.txt",
+        "README.md",
+    ];
+
+    for file in files {
+        let path = Path::new(output_dir).join(file);
+        if path.exists() {
+            if let Ok(content) = fs::read_to_string(&path) {
+                let lines = content.lines().count();
+                println!("   ✓ {} ({} lines)", file, lines);
+            } else {
+                println!("   ✓ {}", file);
+            }
+        } else {
+            println!("   ✗ {} (missing)", file);
+        }
+    }
+
+    let qr_dir = Path::new(output_dir).join("qr_codes");
+    if qr_dir.exists() {
+        if let Ok(entries) = fs::read_dir(&qr_dir) {
+            let count = entries.count();
+            println!("   ✓ qr_codes/ ({} files)", count);
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ProxyInfo {
+    pub ip: String,
+    pub port: u16,
+    pub location: String,
+    pub response_time: u32,
+}
+
+fn read_live_proxy_list(file_path: &str) -> Vec<ProxyInfo> {
+    println!("📄 Reading scanner output: {}", file_path);
     
+    let path = Path::new(file_path);
     if !path.exists() {
-        println!("   ❌ File not found: {}", file_path);
+        println!("   ⚠️ File not found");
         return Vec::new();
     }
 
     let content = match fs::read_to_string(path) {
         Ok(c) => c,
         Err(e) => {
-            println!("   ❌ Cannot read file: {}", e);
+            println!("   ⚠️ Error reading file: {}", e);
             return Vec::new();
         }
     };
 
     println!("   📊 File size: {} bytes", content.len());
+    
+    if content.is_empty() {
+        println!("   ⚠️ File is empty");
+        return Vec::new();
+    }
 
-    let mut live_ips = Vec::new();
-    let mut live_lines = 0;
-    let mut dead_lines = 0;
+    let mut proxies = Vec::new();
+    let mut live_count = 0;
+    let mut dead_count = 0;
 
     for line in content.lines() {
-        let upper = line.to_uppercase();
+        let trimmed = line.trim();
         
-        // Skip DEAD proxies
-        if upper.contains("DEAD") || line.contains("❌") {
-            dead_lines += 1;
+        // Skip empty lines and headers
+        if trimmed.is_empty() || 
+           trimmed.starts_with('#') || 
+           trimmed.starts_with('|') || 
+           trimmed.starts_with('-') ||
+           trimmed.starts_with('[') ||
+           trimmed.starts_with('<') ||
+           trimmed.starts_with('>') ||
+           trimmed.starts_with("```") ||
+           trimmed.starts_with("##") {
             continue;
         }
-        
-        // Only process PROXY LIVE lines
-        if upper.contains("PROXY LIVE") || (upper.contains("LIVE") && line.contains("✅")) || line.contains("🟩") {
-            live_lines += 1;
+
+        // ✅ ONLY process LIVE proxies - SKIP DEAD ones
+        if line.contains("PROXY LIVE") && line.contains("🟩") {
+            live_count += 1;
             
-            // Extract IP from this line
-            if let Some(ip) = find_ip_in_line(line) {
-                // Avoid duplicates
-                if !live_ips.contains(&ip) {
-                    live_ips.push(ip);
-                }
+            if let Some(ip) = extract_ip(line) {
+                // Extract response time
+                let response_time = extract_time(line);
+                
+                // Extract location
+                let location = extract_location(line);
+                
+                let proxy = ProxyInfo {
+                    ip: ip.clone(),
+                    port: 443,  // ✅ ALWAYS port 443
+                    location,
+                    response_time,
+                };
+                
+                println!("   ✅ LIVE: {} ({}ms) - {}", ip, proxy.response_time, proxy.location);
+                proxies.push(proxy);
+            }
+        } 
+        // ❌ Skip DEAD proxies
+        else if line.contains("PROXY DEAD") && line.contains("❌") {
+            dead_count += 1;
+            if let Some(ip) = extract_ip(line) {
+                println!("   ❌ DEAD: {} (skipped)", ip);
             }
         }
     }
 
-    println!("   📊 Found: {} LIVE lines, {} DEAD lines", live_lines, dead_lines);
-    println!("   📊 Extracted: {} unique IPs", live_ips.len());
+    println!("\n   📊 Statistics:");
+    println!("      LIVE proxies: {} ✅", live_count);
+    println!("      DEAD proxies: {} ❌ (skipped)", dead_count);
+    println!("      Valid IPs extracted: {}", proxies.len());
 
-    live_ips
+    proxies
 }
 
-/// Find IP address in a line
-fn find_ip_in_line(line: &str) -> Option<String> {
-    // Split by common delimiters and find IP pattern
-    for part in line.split(|c: char| c.is_whitespace() || c == ':' || c == '(' || c == ')') {
-        let cleaned: String = part.chars()
-            .filter(|c| c.is_ascii_digit() || *c == '.')
-            .collect();
-        
-        if is_valid_public_ip(&cleaned) {
-            return Some(cleaned);
-        }
-    }
+fn extract_ip(text: &str) -> Option<String> {
+    // Find IP pattern in text
+    let mut result = String::new();
+    let mut dot_count = 0;
+    let mut num_start = false;
     
-    // Fallback: scan character by character
-    let mut current = String::new();
-    let mut dots = 0;
-    
-    for ch in line.chars() {
+    for ch in text.chars() {
         if ch.is_ascii_digit() {
-            current.push(ch);
-        } else if ch == '.' && !current.is_empty() && dots < 3 {
-            current.push(ch);
-            dots += 1;
-        } else {
-            if dots == 3 && is_valid_public_ip(&current) {
-                return Some(current);
+            result.push(ch);
+            num_start = true;
+        } else if ch == '.' && num_start && dot_count < 3 {
+            result.push(ch);
+            dot_count += 1;
+        } else if num_start && dot_count == 3 {
+            if is_valid_ip(&result) {
+                return Some(result);
             }
-            current.clear();
-            dots = 0;
+            result.clear();
+            dot_count = 0;
+            num_start = false;
+        } else {
+            if num_start && dot_count == 3 {
+                if is_valid_ip(&result) {
+                    return Some(result);
+                }
+            }
+            result.clear();
+            dot_count = 0;
+            num_start = false;
         }
     }
     
-    if dots == 3 && is_valid_public_ip(&current) {
-        return Some(current);
+    // Check final result
+    if dot_count == 3 && is_valid_ip(&result) {
+        return Some(result);
     }
     
     None
 }
 
-/// Validate IP and ensure it's public (not private/localhost)
-fn is_valid_public_ip(ip: &str) -> bool {
+fn is_valid_ip(ip: &str) -> bool {
     let parts: Vec<&str> = ip.split('.').collect();
-    
     if parts.len() != 4 {
         return false;
     }
     
-    let mut octets = Vec::new();
-    for part in &parts {
+    for part in parts {
         if part.is_empty() || part.len() > 3 {
             return false;
         }
-        match part.parse::<u8>() {
-            Ok(n) => octets.push(n),
-            Err(_) => return false,
+        match part.parse::<u16>() {
+            Ok(n) if n <= 255 => continue,
+            _ => return false,
         }
     }
-    
-    // Exclude private and special IPs
-    let first = octets[0];
-    let second = octets[1];
-    
-    // 0.x.x.x - Invalid
-    if first == 0 { return false; }
-    // 10.x.x.x - Private
-    if first == 10 { return false; }
-    // 127.x.x.x - Localhost
-    if first == 127 { return false; }
-    // 172.16-31.x.x - Private
-    if first == 172 && (16..=31).contains(&second) { return false; }
-    // 192.168.x.x - Private
-    if first == 192 && second == 168 { return false; }
-    // 169.254.x.x - Link-local
-    if first == 169 && second == 254 { return false; }
     
     true
 }
 
-fn print_file_summary(dir: &str) {
-    println!("\n📂 Generated files:");
-    
-    let files = [
-        ("all_configs.txt", "All generated configs"),
-        ("config_links.txt", "Working configs only"),
-        ("subscription.txt", "Base64 subscription"),
-        ("vless_configs.txt", "VLESS configs"),
-        ("vmess_configs.txt", "VMess configs"),
-        ("trojan_configs.txt", "Trojan configs"),
-        ("statistics.txt", "Test statistics"),
-    ];
-    
-    for (file, desc) in files {
-        let path = Path::new(dir).join(file);
-        if path.exists() {
-            if let Ok(content) = fs::read_to_string(&path) {
-                let count = content.lines()
-                    .filter(|l| !l.starts_with('#') && !l.is_empty())
-                    .count();
-                println!("   ✓ {} - {} ({} lines)", file, desc, count);
+fn extract_time(text: &str) -> u32 {
+    // Look for (XXX ms) pattern
+    if let Some(start) = text.find('(') {
+        if let Some(end) = text.find("ms") {
+            if end > start {
+                let num_str: String = text[start+1..end]
+                    .chars()
+                    .filter(|c| c.is_ascii_digit())
+                    .collect();
+                return num_str.parse().unwrap_or(0);
             }
-        } else {
-            println!("   ✗ {} - Missing", file);
         }
     }
-    
-    let qr_path = Path::new(dir).join("qr_codes");
-    if qr_path.exists() {
-        if let Ok(entries) = fs::read_dir(&qr_path) {
-            let count = entries.filter(|e| e.is_ok()).count();
-            println!("   ✓ qr_codes/ - {} files", count);
+    0
+}
+
+fn extract_location(text: &str) -> String {
+    // Extract location from end of line after last dash
+    if let Some(pos) = text.rfind('-') {
+        let loc = text[pos+1..].trim();
+        let clean: String = loc.chars()
+            .take_while(|c| c.is_alphabetic() || c.is_whitespace())
+            .collect();
+        if !clean.is_empty() {
+            return clean.trim().to_string();
         }
     }
+    "Unknown".to_string()
 }
