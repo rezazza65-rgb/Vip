@@ -1,1 +1,1 @@
-# No VMess configurations available
+# No VMess configurations generated

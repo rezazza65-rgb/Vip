@@ -1,8 +1,9 @@
 Configuration Test Statistics
 ==============================
 
-Generated at: 2026-01-29T15:13:28.490085325+00:00
+Generated at: 2026-01-29T18:23:05.380134318+00:00
 
+Total Configs Generated: 0
 Total Configs Tested: 0
 Working Configs: 0
 Failed Configs: 0
@@ -10,8 +11,11 @@ Success Rate: 0.00%
 
 Performance Metrics:
 - Average Response Time: 0.00 ms
-- Fastest Response Time: N/A
-- Slowest Response Time: N/A
+- Fastest Response Time: N/A ms
+- Slowest Response Time: N/A ms
 
-Note: No live proxies were detected in the last scan.
-The system is ready to process proxies once they are discovered.
+Files Generated:
+- all_configs.txt: All 0 generated configurations
+- config_links.txt: 0 working configurations
+- subscription.txt: Base64 of all configs
+- working_subscription.txt: Base64 of working configs only

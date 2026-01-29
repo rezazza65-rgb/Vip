@@ -1,14 +1,16 @@
 {
+  "subscription_link": "",
+  "working_subscription_link": "",
+  "all_configs": [],
   "configs": [],
-  "generated_at": "2026-01-29T15:13:28.490085325+00:00",
   "statistics": {
-    "average_response_time_ms": 0.0,
-    "failed_configs": 0,
-    "fastest_response_time_ms": null,
-    "slowest_response_time_ms": null,
-    "success_rate": 0.0,
     "total_configs": 0,
-    "working_configs": 0
+    "working_configs": 0,
+    "failed_configs": 0,
+    "success_rate": 0.0,
+    "average_response_time_ms": 0.0,
+    "fastest_response_time_ms": null,
+    "slowest_response_time_ms": null
   },
-  "subscription_link": ""
+  "generated_at": "2026-01-29T18:23:05.380134318+00:00"
 }
