@@ -1,6 +1,5 @@
 use std::time::Duration;
 use tokio::time::timeout;
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
 use crate::generator::ProxyConfig;
