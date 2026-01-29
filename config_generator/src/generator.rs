@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use rand::Rng;
-use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProxyConfig {
@@ -227,7 +226,8 @@ impl ConfigGenerator {
         use rand::Rng;
         let mut rng = rand::thread_rng();
         let bytes: Vec<u8> = (0..32).map(|_| rng.gen()).collect();
-        base64::encode(&bytes)
+        use base64::{Engine as _, engine::general_purpose};
+        general_purpose::STANDARD.encode(&bytes)
     }
 
     fn generate_short_id(&self, rng: &mut impl Rng) -> String {
@@ -339,7 +339,8 @@ impl ConfigGenerator {
             "fp": config.fingerprint,
         });
 
-        format!("vmess://{}", base64::encode(vmess_json.to_string()))
+        use base64::{Engine as _, engine::general_purpose};
+        format!("vmess://{}", general_purpose::STANDARD.encode(vmess_json.to_string()))
     }
 
     fn trojan_to_link(&self, config: &ProxyConfig) -> String {
@@ -384,7 +385,8 @@ impl ConfigGenerator {
         let method = "chacha20-ietf-poly1305";
         let password = &config.id[..16];
         let userinfo = format!("{}:{}", method, password);
-        let encoded = base64::encode(&userinfo);
+        use base64::{Engine as _, engine::general_purpose};
+        let encoded = general_purpose::STANDARD.encode(&userinfo);
         
         format!(
             "ss://{}@{}:{}#SS_{}",
@@ -397,7 +399,7 @@ impl ConfigGenerator {
 }
 
 impl Protocol {
-    fn to_string(&self) -> &str {
+    pub fn to_string(&self) -> &str {
         match self {
             Protocol::VLESS => "VLESS",
             Protocol::VMess => "VMess",
@@ -408,7 +410,7 @@ impl Protocol {
 }
 
 impl Transmission {
-    fn to_string(&self) -> &str {
+    pub fn to_string(&self) -> &str {
         match self {
             Transmission::TCP => "TCP",
             Transmission::WebSocket => "WS",
