@@ -33,7 +33,7 @@ jobs:
     # ========================================
     - name: Initialize Directory Structure
       run: |
-        echo "📁 Initializing directory structure..."
+        echo "🏗 Initializing directory structure..."
         
         # Create main directories
         mkdir -p sub/configs/qr_codes
@@ -41,7 +41,7 @@ jobs:
         
         # Check if configs directory is already tracked in Git
         if git ls-files --error-unmatch sub/configs/.gitkeep >/dev/null 2>&1; then
-          echo "✓ Directory structure already exists in repository"
+          echo "✅ Directory structure already exists in repository"
         else
           echo "🆕 First run detected - creating directory structure"
           
@@ -74,7 +74,7 @@ jobs:
           git config --global user.name "NET-Sentinel Bot"
           git config --global user.email "224584266+NetSentinel-Bot@users.noreply.github.com"
           git add sub/configs/.gitkeep sub/configs/README.md
-          git commit -m "📁 Initialize configs directory structure
+          git commit -m "🏗 Initialize configs directory structure
 
         - Created sub/configs/ directory
         - Created sub/configs/qr_codes/ subdirectory  
@@ -83,7 +83,7 @@ jobs:
 
         This structure will be populated by automated workflow runs." || echo "No commit needed"
           
-          git push origin main || echo "⚠️  Push failed, will retry at end"
+          git push origin main || echo "⚠️ Push failed, will retry at end"
         fi
         
         # Always ensure subdirectories exist (idempotent operation)
@@ -131,9 +131,114 @@ jobs:
 
     - name: Run Config Generator
       run: |
-        echo "⚙️  Starting config generator..."
+        echo "⚙️ Starting config generator..."
         ./config_generator/target/release/config-generator
       continue-on-error: true
+
+    # ========================================
+    # Phase 2.5: Create Empty Files if No Proxies Found
+    # ========================================
+    - name: Ensure Output Files Exist
+      run: |
+        echo "📝 Checking and creating output files if needed..."
+        
+        # Create output directory if it doesn't exist
+        mkdir -p sub/configs/qr_codes
+        
+        # Function to create file if it doesn't exist
+        create_if_missing() {
+          local filepath="$1"
+          local content="$2"
+          
+          if [ ! -f "$filepath" ]; then
+            echo "Creating: $filepath"
+            echo "$content" > "$filepath"
+          else
+            echo "✓ Already exists: $filepath"
+          fi
+        }
+        
+        # Get current timestamp
+        TIMESTAMP=$(TZ='Asia/Tehran' date '+%Y-%m-%d %H:%M:%S')
+        
+        # Check if ProxyIP-Daily.md exists and count proxies
+        PROXY_COUNT=0
+        if [ -f "sub/ProxyIP-Daily.md" ]; then
+          PROXY_COUNT=$(grep -c "PROXY LIVE" sub/ProxyIP-Daily.md 2>/dev/null || echo "0")
+        fi
+        
+        echo "Found $PROXY_COUNT live proxies"
+        
+        # subscription.txt - Empty base64 if no configs
+        if [ ! -f "sub/configs/subscription.txt" ]; then
+          echo "Creating empty subscription.txt"
+          echo "" | base64 > sub/configs/subscription.txt
+        fi
+        
+        # configs.json - Empty JSON structure
+        if [ ! -f "sub/configs/configs.json" ]; then
+          echo "Creating empty configs.json"
+          cat > sub/configs/configs.json << 'JSONEOF'
+        {
+          "subscription_link": "",
+          "configs": [],
+          "statistics": {
+            "total_configs": 0,
+            "working_configs": 0,
+            "failed_configs": 0,
+            "success_rate": 0.0,
+            "average_response_time_ms": 0.0,
+            "fastest_response_time_ms": null,
+            "slowest_response_time_ms": null
+          },
+          "generated_at": "TIMESTAMP_PLACEHOLDER"
+        }
+        JSONEOF
+          # Replace timestamp placeholder
+          sed -i "s/TIMESTAMP_PLACEHOLDER/$TIMESTAMP/g" sub/configs/configs.json
+        fi
+        
+        # config_links.txt
+        create_if_missing "sub/configs/config_links.txt" "# No working configurations available yet
+        # Run workflow again when proxies are detected"
+        
+        # vless_configs.txt
+        create_if_missing "sub/configs/vless_configs.txt" "# No VLESS configurations available"
+        
+        # vmess_configs.txt
+        create_if_missing "sub/configs/vmess_configs.txt" "# No VMess configurations available"
+        
+        # trojan_configs.txt
+        create_if_missing "sub/configs/trojan_configs.txt" "# No Trojan configurations available"
+        
+        # statistics.txt
+        if [ ! -f "sub/configs/statistics.txt" ]; then
+          echo "Creating statistics.txt"
+          cat > sub/configs/statistics.txt << 'STATSEOF'
+        Configuration Test Statistics
+        ==============================
+
+        Generated at: TIMESTAMP_PLACEHOLDER
+
+        Total Configs Tested: 0
+        Working Configs: 0
+        Failed Configs: 0
+        Success Rate: 0.00%
+
+        Performance Metrics:
+        - Average Response Time: 0.00 ms
+        - Fastest Response Time: N/A
+        - Slowest Response Time: N/A
+
+        Note: No live proxies were detected in the last scan.
+        The system is ready to process proxies once they are discovered.
+        STATSEOF
+          sed -i "s/TIMESTAMP_PLACEHOLDER/$TIMESTAMP/g" sub/configs/statistics.txt
+        fi
+        
+        echo ""
+        echo "✅ All required output files are present"
+        ls -lh sub/configs/ | grep -v "^total" | tail -n +2
 
     # ========================================
     # Phase 3: Commit and Push Results
@@ -153,7 +258,7 @@ jobs:
           git add sub/ProxyIP-Daily.md
           echo "✓ Staged: sub/ProxyIP-Daily.md"
         else
-          echo "⚠️  Warning: sub/ProxyIP-Daily.md not found"
+          echo "⚠️ Warning: sub/ProxyIP-Daily.md not found"
         fi
         
         # Add .gitkeep if modified
@@ -161,39 +266,24 @@ jobs:
           git add sub/configs/.gitkeep 2>/dev/null || true
         fi
         
-        # Find and add all config output files
+        # Force add all config files (they're essential outputs)
         echo ""
-        echo "🔍 Searching for generated config files..."
+        echo "🔍 Adding all config output files..."
         
-        # Count and add text files
-        FOUND_TXT=$(find sub/configs -maxdepth 1 -type f -name "*.txt" 2>/dev/null | wc -l)
-        if [ "$FOUND_TXT" -gt 0 ]; then
-          find sub/configs -maxdepth 1 -type f -name "*.txt" -exec git add -f {} \;
-          echo "✓ Found and staged $FOUND_TXT text file(s)"
-        fi
+        # Add all files in configs directory
+        git add -f sub/configs/*.txt 2>/dev/null || true
+        git add -f sub/configs/*.json 2>/dev/null || true
+        git add -f sub/configs/*.md 2>/dev/null || true
+        git add -f sub/configs/qr_codes/* 2>/dev/null || true
         
-        # Count and add JSON files
-        FOUND_JSON=$(find sub/configs -maxdepth 1 -type f -name "*.json" 2>/dev/null | wc -l)
-        if [ "$FOUND_JSON" -gt 0 ]; then
-          find sub/configs -maxdepth 1 -type f -name "*.json" -exec git add -f {} \;
-          echo "✓ Found and staged $FOUND_JSON JSON file(s)"
-        fi
+        # Count staged files
+        FOUND_TXT=$(git diff --cached --name-only | grep -c "\.txt$" || echo "0")
+        FOUND_JSON=$(git diff --cached --name-only | grep -c "\.json$" || echo "0")
+        FOUND_MD=$(git diff --cached --name-only | grep -c "\.md$" || echo "0")
         
-        # Count and add markdown files
-        FOUND_MD=$(find sub/configs -maxdepth 1 -type f -name "*.md" 2>/dev/null | wc -l)
-        if [ "$FOUND_MD" -gt 0 ]; then
-          find sub/configs -maxdepth 1 -type f -name "*.md" -exec git add -f {} \;
-          echo "✓ Found and staged $FOUND_MD markdown file(s)"
-        fi
-        
-        # Count and add QR codes
-        if [ -d "sub/configs/qr_codes" ]; then
-          FOUND_QR=$(find sub/configs/qr_codes -type f 2>/dev/null | wc -l)
-          if [ "$FOUND_QR" -gt 0 ]; then
-            find sub/configs/qr_codes -type f -exec git add -f {} \;
-            echo "✓ Found and staged $FOUND_QR QR code file(s)"
-          fi
-        fi
+        echo "✓ Found and staged $FOUND_TXT text file(s)"
+        echo "✓ Found and staged $FOUND_JSON JSON file(s)"
+        echo "✓ Found and staged $FOUND_MD markdown file(s)"
         
         # Display staging summary
         echo ""
@@ -205,7 +295,7 @@ jobs:
           echo "Staged files:"
           git diff --cached --name-only | sed 's/^/  • /'
         else
-          echo "ℹ️  No new files to stage"
+          echo "ℹ️ No new files to stage"
         fi
 
     - name: Commit Changes
@@ -218,18 +308,25 @@ jobs:
           echo "has_changes=false" >> $GITHUB_ENV
         else
           CHANGED_FILES=$(git diff --cached --name-only | wc -l)
+          
+          # Count proxies for commit message
+          PROXY_COUNT=0
+          if [ -f "sub/ProxyIP-Daily.md" ]; then
+            PROXY_COUNT=$(grep -c "PROXY LIVE" sub/ProxyIP-Daily.md 2>/dev/null || echo "0")
+          fi
+          
           echo "📝 Committing $CHANGED_FILES changed file(s)"
           echo ""
           
-          git commit -m "🔄 Auto-update: Proxy scan & config generation
+          git commit -m "📄 Auto-update: Proxy scan & config generation
 
         Completed at: $TIMESTAMP (Tehran Time)
 
-        📡 Proxy Scanner Results
-        ⚙️  Configuration Generator Results
-        📊 Statistics and Reports Updated
-        🔗 Subscription Links Generated
-        📱 QR Codes Created
+        📡 Proxy Scanner: Found $PROXY_COUNT live proxies
+        ⚙️ Configuration Generator: Output files updated
+        📊 Statistics and Reports: Available
+        🔗 Subscription Links: Generated
+        📱 QR Codes: Ready
 
         Generated by: NET-Sentinel Automation"
           
@@ -240,7 +337,7 @@ jobs:
     - name: Amend Commit with Diana-Cl Identity
       if: env.has_changes == 'true'
       run: |
-        echo "✏️  Amending commit with Diana-Cl identity..."
+        echo "✏️ Amending commit with Diana-Cl identity..."
         git -c committer.name="Diana-Cl" \
             -c committer.email="135276904+Diana-Cl@users.noreply.github.com" \
             commit --amend --no-edit
@@ -261,9 +358,9 @@ jobs:
       if: always()
       run: |
         echo ""
-        echo "════════════════════════════════════════"
+        echo "╔════════════════════════════════════════╗"
         echo "         Workflow Summary"
-        echo "════════════════════════════════════════"
+        echo "╚════════════════════════════════════════╝"
         echo ""
         
         # Check scanner output
@@ -272,25 +369,28 @@ jobs:
           echo "📡 Scanner: ✅ Success"
           echo "   └─ Found $PROXY_COUNT live proxies"
         else
-          echo "📡 Scanner: ⚠️  No output file"
+          echo "📡 Scanner: ⚠️ No output file"
         fi
         
-        # Check config generator output
+        # Check config files exist
+        CONFIG_STATUS="❌ Not created"
         if [ -f "sub/configs/configs.json" ]; then
-          echo "⚙️  Config Generator: ✅ Success"
-          if [ -f "sub/configs/statistics.txt" ]; then
-            echo "   └─ Statistics available in configs/statistics.txt"
-          fi
-        else
-          echo "⚙️  Config Generator: ⚠️  No output files"
+          CONFIG_STATUS="✅ Created"
         fi
+        echo "⚙️ Config Files: $CONFIG_STATUS"
         
-        # Check subscription link
-        if [ -f "sub/configs/subscription.txt" ]; then
-          echo "🔗 Subscription: ✅ Generated"
-          echo "   └─ Available at: sub/configs/subscription.txt"
-        else
-          echo "🔗 Subscription: ⚠️  Not generated"
+        # List all config files
+        if [ -d "sub/configs" ]; then
+          echo ""
+          echo "📁 Config Files Status:"
+          for file in subscription.txt configs.json config_links.txt vless_configs.txt vmess_configs.txt trojan_configs.txt statistics.txt; do
+            if [ -f "sub/configs/$file" ]; then
+              SIZE=$(stat -f%z "sub/configs/$file" 2>/dev/null || stat -c%s "sub/configs/$file" 2>/dev/null || echo "0")
+              echo "   ✓ $file (${SIZE} bytes)"
+            else
+              echo "   ✗ $file (missing)"
+            fi
+          done
         fi
         
         # Check QR codes
@@ -299,14 +399,14 @@ jobs:
           if [ "$QR_COUNT" -gt 0 ]; then
             echo "📱 QR Codes: ✅ Generated ($QR_COUNT files)"
           else
-            echo "📱 QR Codes: ⚠️  Not generated"
+            echo "📱 QR Codes: ℹ️ No QR codes (no configs to generate)"
           fi
         fi
         
         echo ""
-        echo "════════════════════════════════════════"
+        echo "╔════════════════════════════════════════╗"
         echo "✅ Workflow completed"
-        echo "════════════════════════════════════════"
+        echo "╚════════════════════════════════════════╝"
 
     - name: Complete Job
       if: always()
