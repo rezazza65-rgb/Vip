@@ -29,11 +29,13 @@ impl ConfigTester {
 
     pub async fn test_configs(&self, configs: Vec<ProxyConfig>) -> Vec<TestResult> {
         let total = configs.len();
-        println!("   Testing {} configurations with {}s timeout...", total, self.timeout_seconds);
+        println!("   Testing {} configurations with {}s timeout, {} concurrent...", 
+                 total, self.timeout_seconds, self.max_concurrent);
         
         let mut results = Vec::new();
         let mut tasks = Vec::new();
         let mut completed = 0;
+        let mut working_so_far = 0;
 
         for config in configs {
             let tester = self.clone();
@@ -48,8 +50,11 @@ impl ConfigTester {
                     .collect();
                 
                 completed += chunk_results.len();
-                let working = chunk_results.iter().filter(|r| r.is_working).count();
-                print!("\r   Progress: {}/{} tested, {} working so far...", completed, total, working);
+                working_so_far += chunk_results.iter().filter(|r| r.is_working).count();
+                
+                // Progress update every batch
+                let percent = (completed as f64 / total as f64 * 100.0) as u32;
+                println!("   Progress: {}/{} ({}%) - {} working", completed, total, percent, working_so_far);
                 
                 results.extend(chunk_results);
             }
@@ -62,10 +67,12 @@ impl ConfigTester {
                 .into_iter()
                 .filter_map(|r| r.ok())
                 .collect();
+            
+            working_so_far += remaining_results.iter().filter(|r| r.is_working).count();
             results.extend(remaining_results);
         }
         
-        println!(); // New line after progress
+        println!("   Completed: {}/{} configs tested, {} working", results.len(), total, working_so_far);
         results
     }
 
@@ -115,8 +122,8 @@ impl ConfigTester {
 
         match timeout(timeout_duration, tokio::net::TcpStream::connect(&addr)).await {
             Ok(Ok(_stream)) => Ok(()),
-            Ok(Err(e)) => Err(format!("TCP connection failed: {}", e)),
-            Err(_) => Err("TCP connection timeout".to_string()),
+            Ok(Err(e)) => Err(format!("TCP: {}", e)),
+            Err(_) => Err("TCP timeout".to_string()),
         }
     }
 
@@ -125,7 +132,7 @@ impl ConfigTester {
             Protocol::VLESS => self.test_vless_handshake(config).await,
             Protocol::VMess => self.test_vmess_handshake(config).await,
             Protocol::Trojan => self.test_trojan_handshake(config).await,
-            Protocol::Shadowsocks => Ok(()), // SS doesn't have a TLS handshake typically
+            Protocol::Shadowsocks => Ok(()),
         }
     }
 
@@ -141,8 +148,8 @@ impl ConfigTester {
                 .await
                 {
                     Ok(Ok(())) => Ok(()),
-                    Ok(Err(e)) => Err(format!("TLS handshake failed: {}", e)),
-                    Err(_) => Err("TLS handshake timeout".to_string()),
+                    Ok(Err(e)) => Err(format!("TLS: {}", e)),
+                    Err(_) => Err("TLS timeout".to_string()),
                 }
             }
             Security::None => Ok(()),
@@ -153,7 +160,7 @@ impl ConfigTester {
         if config.security == Security::TLS {
             self.test_tls_handshake(&config.address, config.port, &config.sni)
                 .await
-                .map_err(|e| format!("VMess TLS handshake failed: {}", e))
+                .map_err(|e| format!("VMess TLS: {}", e))
         } else {
             Ok(())
         }
@@ -162,7 +169,7 @@ impl ConfigTester {
     async fn test_trojan_handshake(&self, config: &ProxyConfig) -> Result<(), String> {
         self.test_tls_handshake(&config.address, config.port, &config.sni)
             .await
-            .map_err(|e| format!("Trojan TLS handshake failed: {}", e))
+            .map_err(|e| format!("Trojan TLS: {}", e))
     }
 
     async fn test_tls_handshake(
@@ -177,22 +184,23 @@ impl ConfigTester {
         let connector = TlsConnector::builder()
             .danger_accept_invalid_certs(true)
             .danger_accept_invalid_hostnames(true)
+            .use_sni(true)
             .build()
-            .map_err(|e| format!("TLS connector build failed: {}", e))?;
+            .map_err(|e| format!("TLS build: {}", e))?;
 
         let connector = TokioTlsConnector::from(connector);
 
         let addr = format!("{}:{}", address, port);
-        let stream = tokio::net::TcpStream::connect(&addr)
-            .await
-            .map_err(|e| format!("TCP connect failed: {}", e))?;
+        
+        let stream = match tokio::net::TcpStream::connect(&addr).await {
+            Ok(s) => s,
+            Err(e) => return Err(format!("Connect: {}", e)),
+        };
 
-        let _ = connector
-            .connect(sni, stream)
-            .await
-            .map_err(|e| format!("TLS connect failed: {}", e))?;
-
-        Ok(())
+        match connector.connect(sni, stream).await {
+            Ok(_) => Ok(()),
+            Err(e) => Err(format!("Handshake: {}", e)),
+        }
     }
 }
 
