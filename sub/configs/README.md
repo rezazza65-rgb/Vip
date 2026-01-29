@@ -5,7 +5,7 @@ This directory contains automatically generated proxy configurations.
 ## Files Generated
 
 - `subscription.txt` - Base64 encoded subscription link
-- `configs.json` - Complete configuration data  
+- `configs.json` - Complete configuration data
 - `config_links.txt` - All working configuration links
 - `vless_configs.txt` - VLESS protocol configurations
 - `vmess_configs.txt` - VMess protocol configurations
