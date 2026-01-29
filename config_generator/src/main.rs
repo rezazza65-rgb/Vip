@@ -35,6 +35,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let output_dir = "sub/configs";
         output_generator.save_to_files(&empty_bundle, output_dir)?;
         
+        // Generate empty QR codes directory
+        subscription_manager.save_qr_codes(&empty_bundle.configs, output_dir)?;
+        
         println!("\n✅ Empty output files created successfully!");
         println!("   Location: {}/", output_dir);
         println!("\n📝 Note: These files will be populated once live proxies are detected.");
@@ -54,7 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("✅ Generated {} total configurations\n", all_configs.len());
 
     // Test all configurations
-    println!("🔍 Testing configurations (this may take a while)...");
+    println!("🔬 Testing configurations (this may take a while)...");
     let config_tester = ConfigTester::new(10, 50); // 10 sec timeout, 50 concurrent
     let test_results = config_tester.test_configs(all_configs).await;
     
@@ -63,7 +66,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
              working_count, test_results.len());
 
     // Generate output
-    println!("📁 Generating output files...");
+    println!("📝 Generating output files...");
     let output_bundle = output_generator.generate_output(test_results);
     
     // Save to files
@@ -102,21 +105,45 @@ fn read_proxy_list(file_path: &str) -> Result<Vec<ProxyInfo>, Box<dyn std::error
     }
 
     let content = fs::read_to_string(file_path)?;
+    
+    // If file is empty or too small
+    if content.trim().is_empty() || content.len() < 50 {
+        println!("⚠️  Scanner output file is empty or too small");
+        return Ok(Vec::new());
+    }
+    
     let mut proxies = Vec::new();
 
     // Debug: show first few lines to understand format
-    let first_lines: Vec<&str> = content.lines().take(5).collect();
-    println!("📄 Reading scanner output file (first 5 lines):");
+    let first_lines: Vec<&str> = content.lines().take(10).collect();
+    println!("📄 Reading scanner output file (first 10 lines):");
     for (i, line) in first_lines.iter().enumerate() {
         println!("   Line {}: {}", i + 1, line);
     }
+    println!();
 
-    for line in content.lines() {
-        // Parse lines like: "PROXY LIVE ✅: 167.114.67.25 (989 ms) - Beauharnois"
-        // Also handle variations without checkmark
-        if line.contains("PROXY LIVE") && (line.contains("✅") || line.contains(":")) {
+    // Parse each line looking for proxy information
+    for (line_num, line) in content.lines().enumerate() {
+        // Skip HTML tags and markdown formatting
+        if line.trim().starts_with('<') || 
+           line.trim().starts_with('>') || 
+           line.trim().starts_with('#') ||
+           line.trim().starts_with('|') ||
+           line.trim().starts_with('[') ||
+           line.trim().starts_with('*') ||
+           line.trim().is_empty() {
+            continue;
+        }
+        
+        // Look for lines with "PROXY LIVE" indicator
+        if line.contains("PROXY LIVE") {
             if let Some(proxy) = parse_proxy_line(line) {
                 proxies.push(proxy);
+            } else {
+                // Debug failed parse
+                if line_num < 20 {  // Only show first 20 failures
+                    println!("   ⚠️  Failed to parse line {}: {}", line_num + 1, line);
+                }
             }
         }
     }
@@ -127,29 +154,32 @@ fn read_proxy_list(file_path: &str) -> Result<Vec<ProxyInfo>, Box<dyn std::error
 }
 
 fn parse_proxy_line(line: &str) -> Option<ProxyInfo> {
-    // Handle format: "PROXY LIVE ✅: 167.114.67.25 (989 ms) - Beauharnois"
+    // Handle multiple formats:
+    // Format 1: "PROXY LIVE ✅: 167.114.67.25 (989 ms) - Beauharnois"
+    // Format 2: "PROXY LIVE: 155.138.128.135 (314 ms) - Toronto"
+    // Format 3: "1043 PROXY LIVE ✅: 94.131.101.246 (1077 ms) - Secaucus"
     
-    // First, try to find the IP address after the colon
+    // First, try to find the IP address after colon
     if let Some(colon_pos) = line.find(':') {
         let after_colon = &line[colon_pos + 1..];
         
-        // Split by whitespace and find the IP
+        // Split by whitespace to find components
         let parts: Vec<&str> = after_colon.split_whitespace().collect();
         
-        for part in parts.iter() {
-            // Check if this looks like an IP address
-            if part.contains('.') && !part.contains("✅") {
-                // Clean up the IP (remove any trailing characters)
+        for (idx, part) in parts.iter().enumerate() {
+            // Check if this looks like an IP address (contains dots and numbers)
+            if part.contains('.') && !part.contains("✅") && !part.contains("ms") {
+                // Try to clean up the IP
                 let ip_candidate = part
                     .trim()
                     .trim_matches(|c: char| !c.is_numeric() && c != '.');
                 
                 // Validate IP format
                 if validate_ip(ip_candidate) {
-                    // Extract response time
-                    let response_time = extract_number_before(line, "ms)").unwrap_or(0);
+                    // Extract response time - look for pattern like "(989 ms)"
+                    let response_time = extract_number_from_parentheses(line, "ms)").unwrap_or(0);
                     
-                    // Extract location (everything after the last -)
+                    // Extract location (everything after the last hyphen)
                     let location = if let Some(dash_pos) = line.rfind('-') {
                         line[dash_pos + 1..].trim().to_string()
                     } else {
@@ -170,8 +200,9 @@ fn parse_proxy_line(line: &str) -> Option<ProxyInfo> {
     None
 }
 
-fn extract_number_before(text: &str, marker: &str) -> Option<u32> {
-    if let Some(marker_pos) = text.find(marker) {
+fn extract_number_from_parentheses(text: &str, end_marker: &str) -> Option<u32> {
+    // Find the end marker (like "ms)")
+    if let Some(marker_pos) = text.find(end_marker) {
         let before_marker = &text[..marker_pos];
         
         // Find the last opening parenthesis before the marker
@@ -222,7 +253,7 @@ mod tests {
     }
 
     #[test]
-    fn test_proxy_parsing() {
+    fn test_proxy_parsing_basic() {
         let line = "PROXY LIVE ✅: 167.114.67.25 (989 ms) - Beauharnois";
         let proxy = parse_proxy_line(line);
         
@@ -235,24 +266,30 @@ mod tests {
     }
     
     #[test]
-    fn test_proxy_parsing_variations() {
-        // Test without checkmark
-        let line1 = "PROXY LIVE: 155.138.128.135 (314 ms) - Toronto";
-        let proxy1 = parse_proxy_line(line1);
-        assert!(proxy1.is_some());
-        assert_eq!(proxy1.unwrap().ip, "155.138.128.135");
+    fn test_proxy_parsing_with_number_prefix() {
+        let line = "1043 PROXY LIVE ✅: 94.131.101.246 (1077 ms) - Secaucus";
+        let proxy = parse_proxy_line(line);
         
-        // Test with different spacing
-        let line2 = "PROXY LIVE ✅:    167.114.67.25    (989 ms)  -  Beauharnois";
-        let proxy2 = parse_proxy_line(line2);
-        assert!(proxy2.is_some());
-        assert_eq!(proxy2.unwrap().ip, "167.114.67.25");
+        assert!(proxy.is_some());
+        let proxy = proxy.unwrap();
+        assert_eq!(proxy.ip, "94.131.101.246");
+        assert_eq!(proxy.response_time, 1077);
+        assert_eq!(proxy.location, "Secaucus");
+    }
+    
+    #[test]
+    fn test_proxy_parsing_without_checkmark() {
+        let line = "PROXY LIVE: 155.138.128.135 (314 ms) - Toronto";
+        let proxy = parse_proxy_line(line);
+        
+        assert!(proxy.is_some());
+        assert_eq!(proxy.unwrap().ip, "155.138.128.135");
     }
     
     #[test]
     fn test_number_extraction() {
-        assert_eq!(extract_number_before("test (123 ms) end", "ms)"), Some(123));
-        assert_eq!(extract_number_before("test (4567 ms) end", "ms)"), Some(4567));
-        assert_eq!(extract_number_before("no number here ms)", "ms)"), None);
+        assert_eq!(extract_number_from_parentheses("test (123 ms) end", "ms)"), Some(123));
+        assert_eq!(extract_number_from_parentheses("test (4567 ms) end", "ms)"), Some(4567));
+        assert_eq!(extract_number_from_parentheses("no number here ms)", "ms)"), None);
     }
 }
