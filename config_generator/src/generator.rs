@@ -109,10 +109,9 @@ impl std::fmt::Display for Security {
 }
 
 pub struct ConfigGenerator {
-    popular_snis: Vec<String>,
-    popular_paths: Vec<String>,
-    fingerprints: Vec<String>,
-    alpn_combinations: Vec<Vec<String>>,
+    snis: Vec<&'static str>,
+    paths: Vec<&'static str>,
+    fingerprints: Vec<&'static str>,
 }
 
 impl Default for ConfigGenerator {
@@ -124,52 +123,30 @@ impl Default for ConfigGenerator {
 impl ConfigGenerator {
     pub fn new() -> Self {
         Self {
-            popular_snis: vec![
-                "www.speedtest.net".into(),
-                "www.yahoo.com".into(),
-                "www.cloudflare.com".into(),
-                "www.google.com".into(),
-                "www.microsoft.com".into(),
-                "www.bing.com".into(),
-                "www.booking.com".into(),
-                "www.cisco.com".into(),
-                "www.wikipedia.org".into(),
-                "discord.com".into(),
-                "telegram.org".into(),
-                "www.ubuntu.com".into(),
-                "www.nvidia.com".into(),
-                "www.amd.com".into(),
-                "aws.amazon.com".into(),
+            snis: vec![
+                "www.speedtest.net",
+                "www.cloudflare.com",
+                "www.google.com",
+                "www.microsoft.com",
+                "discord.com",
+                "telegram.org",
+                "www.amazon.com",
+                "www.apple.com",
             ],
-            popular_paths: vec![
-                "/".into(),
-                "/ws".into(),
-                "/vless".into(),
-                "/vmess".into(),
-                "/api".into(),
-                "/download".into(),
-                "/upgrade".into(),
-                "/socket".into(),
-                "/graphql".into(),
-                "/cdn-cgi/trace".into(),
+            paths: vec![
+                "/",
+                "/ws",
+                "/vless",
+                "/vmess",
+                "/api",
+                "/graphql",
             ],
             fingerprints: vec![
-                "chrome".into(),
-                "firefox".into(),
-                "safari".into(),
-                "ios".into(),
-                "android".into(),
-                "edge".into(),
-                "360".into(),
-                "qq".into(),
-                "random".into(),
-                "randomized".into(),
-            ],
-            alpn_combinations: vec![
-                vec!["h2".into(), "http/1.1".into()],
-                vec!["h2".into()],
-                vec!["http/1.1".into()],
-                vec!["h3".into()],
+                "chrome",
+                "firefox",
+                "safari",
+                "edge",
+                "random",
             ],
         }
     }
@@ -178,290 +155,305 @@ impl ConfigGenerator {
         let mut configs = Vec::new();
         let mut rng = rand::thread_rng();
 
-        // Priority combinations - most likely to work
-        let priority_combinations = vec![
-            (Protocol::VLESS, Transmission::XHTTP, Security::Reality),
-            (Protocol::VLESS, Transmission::GRPC, Security::Reality),
-            (Protocol::VLESS, Transmission::WebSocket, Security::TLS),
-            (Protocol::VLESS, Transmission::HTTPUpgrade, Security::Reality),
-            (Protocol::VLESS, Transmission::SplitHTTP, Security::Reality),
-            (Protocol::VMess, Transmission::WebSocket, Security::TLS),
-            (Protocol::VMess, Transmission::GRPC, Security::TLS),
-            (Protocol::Trojan, Transmission::WebSocket, Security::TLS),
-            (Protocol::Trojan, Transmission::GRPC, Security::TLS),
-        ];
-
-        for (protocol, transmission, security) in priority_combinations {
-            let config = self.create_config(
-                proxy_ip,
-                port,
-                protocol,
-                transmission,
-                security,
-                &mut rng,
-            );
-            configs.push(config);
-        }
-
-        // Additional combinations
-        for protocol in &[Protocol::VLESS, Protocol::VMess, Protocol::Trojan] {
-            for transmission in &[Transmission::TCP, Transmission::WebSocket] {
-                let security = if *protocol == Protocol::VLESS {
-                    Security::Reality
-                } else {
-                    Security::TLS
-                };
-
-                let config = self.create_config(
-                    proxy_ip,
-                    port,
-                    protocol.clone(),
-                    transmission.clone(),
-                    security,
-                    &mut rng,
-                );
-                configs.push(config);
-            }
-        }
-
-        // Add Shadowsocks config
-        let ss_config = self.create_config(
-            proxy_ip,
-            port,
-            Protocol::Shadowsocks,
-            Transmission::TCP,
-            Security::None,
-            &mut rng,
-        );
-        configs.push(ss_config);
+        // VLESS configs
+        configs.push(self.create_vless_ws_tls(proxy_ip, port, &mut rng));
+        configs.push(self.create_vless_grpc_tls(proxy_ip, port, &mut rng));
+        configs.push(self.create_vless_tcp_reality(proxy_ip, port, &mut rng));
+        
+        // VMess configs
+        configs.push(self.create_vmess_ws_tls(proxy_ip, port, &mut rng));
+        configs.push(self.create_vmess_tcp_tls(proxy_ip, port, &mut rng));
+        
+        // Trojan configs
+        configs.push(self.create_trojan_ws_tls(proxy_ip, port, &mut rng));
+        configs.push(self.create_trojan_grpc_tls(proxy_ip, port, &mut rng));
+        
+        // Shadowsocks config
+        configs.push(self.create_shadowsocks(proxy_ip, port, &mut rng));
 
         configs
     }
 
-    fn create_config(
-        &self,
-        address: &str,
-        port: u16,
-        protocol: Protocol,
-        transmission: Transmission,
-        security: Security,
-        rng: &mut impl Rng,
-    ) -> ProxyConfig {
-        let sni = self.popular_snis[rng.gen_range(0..self.popular_snis.len())].clone();
-        let alpn = self.alpn_combinations[rng.gen_range(0..self.alpn_combinations.len())].clone();
-        let fingerprint = self.fingerprints[rng.gen_range(0..self.fingerprints.len())].clone();
-
-        let id = self.generate_uuid();
-
-        let (path, host, service_name) = match transmission {
-            Transmission::WebSocket | Transmission::HTTPUpgrade | Transmission::SplitHTTP => {
-                let path =
-                    Some(self.popular_paths[rng.gen_range(0..self.popular_paths.len())].clone());
-                let host = Some(sni.clone());
-                (path, host, None)
-            }
-            Transmission::GRPC => {
-                let service_name = Some(format!("grpc{}", rng.gen_range(1000..9999)));
-                (None, None, service_name)
-            }
-            Transmission::XHTTP => {
-                let path = Some("/xhttp".to_string());
-                let host = Some(sni.clone());
-                (path, host, None)
-            }
-            Transmission::TCP => (None, None, None),
-        };
-
-        let (public_key, short_id) = if security == Security::Reality {
-            (
-                Some(self.generate_public_key()),
-                Some(self.generate_short_id(rng)),
-            )
-        } else {
-            (None, None)
-        };
-
+    fn create_vless_ws_tls(&self, address: &str, port: u16, rng: &mut impl Rng) -> ProxyConfig {
+        let sni = self.snis[rng.gen_range(0..self.snis.len())];
         ProxyConfig {
-            protocol,
-            transmission,
+            protocol: Protocol::VLESS,
+            transmission: Transmission::WebSocket,
             address: address.to_string(),
             port,
-            id,
-            security,
-            sni,
-            alpn,
-            fingerprint,
-            path,
-            host,
-            service_name,
-            public_key,
-            short_id,
+            id: uuid::Uuid::new_v4().to_string(),
+            security: Security::TLS,
+            sni: sni.to_string(),
+            alpn: vec!["h2".to_string(), "http/1.1".to_string()],
+            fingerprint: self.fingerprints[rng.gen_range(0..self.fingerprints.len())].to_string(),
+            path: Some(self.paths[rng.gen_range(0..self.paths.len())].to_string()),
+            host: Some(sni.to_string()),
+            service_name: None,
+            public_key: None,
+            short_id: None,
         }
     }
 
-    fn generate_uuid(&self) -> String {
-        uuid::Uuid::new_v4().to_string()
+    fn create_vless_grpc_tls(&self, address: &str, port: u16, rng: &mut impl Rng) -> ProxyConfig {
+        let sni = self.snis[rng.gen_range(0..self.snis.len())];
+        ProxyConfig {
+            protocol: Protocol::VLESS,
+            transmission: Transmission::GRPC,
+            address: address.to_string(),
+            port,
+            id: uuid::Uuid::new_v4().to_string(),
+            security: Security::TLS,
+            sni: sni.to_string(),
+            alpn: vec!["h2".to_string()],
+            fingerprint: self.fingerprints[rng.gen_range(0..self.fingerprints.len())].to_string(),
+            path: None,
+            host: None,
+            service_name: Some(format!("grpc{}", rng.gen_range(1000..9999))),
+            public_key: None,
+            short_id: None,
+        }
     }
 
-    fn generate_public_key(&self) -> String {
-        let mut rng = rand::thread_rng();
+    fn create_vless_tcp_reality(&self, address: &str, port: u16, rng: &mut impl Rng) -> ProxyConfig {
+        let sni = self.snis[rng.gen_range(0..self.snis.len())];
+        ProxyConfig {
+            protocol: Protocol::VLESS,
+            transmission: Transmission::TCP,
+            address: address.to_string(),
+            port,
+            id: uuid::Uuid::new_v4().to_string(),
+            security: Security::Reality,
+            sni: sni.to_string(),
+            alpn: vec!["h2".to_string()],
+            fingerprint: self.fingerprints[rng.gen_range(0..self.fingerprints.len())].to_string(),
+            path: None,
+            host: None,
+            service_name: None,
+            public_key: Some(self.generate_public_key(rng)),
+            short_id: Some(self.generate_short_id(rng)),
+        }
+    }
+
+    fn create_vmess_ws_tls(&self, address: &str, port: u16, rng: &mut impl Rng) -> ProxyConfig {
+        let sni = self.snis[rng.gen_range(0..self.snis.len())];
+        ProxyConfig {
+            protocol: Protocol::VMess,
+            transmission: Transmission::WebSocket,
+            address: address.to_string(),
+            port,
+            id: uuid::Uuid::new_v4().to_string(),
+            security: Security::TLS,
+            sni: sni.to_string(),
+            alpn: vec!["h2".to_string(), "http/1.1".to_string()],
+            fingerprint: self.fingerprints[rng.gen_range(0..self.fingerprints.len())].to_string(),
+            path: Some(self.paths[rng.gen_range(0..self.paths.len())].to_string()),
+            host: Some(sni.to_string()),
+            service_name: None,
+            public_key: None,
+            short_id: None,
+        }
+    }
+
+    fn create_vmess_tcp_tls(&self, address: &str, port: u16, rng: &mut impl Rng) -> ProxyConfig {
+        let sni = self.snis[rng.gen_range(0..self.snis.len())];
+        ProxyConfig {
+            protocol: Protocol::VMess,
+            transmission: Transmission::TCP,
+            address: address.to_string(),
+            port,
+            id: uuid::Uuid::new_v4().to_string(),
+            security: Security::TLS,
+            sni: sni.to_string(),
+            alpn: vec!["h2".to_string(), "http/1.1".to_string()],
+            fingerprint: self.fingerprints[rng.gen_range(0..self.fingerprints.len())].to_string(),
+            path: None,
+            host: None,
+            service_name: None,
+            public_key: None,
+            short_id: None,
+        }
+    }
+
+    fn create_trojan_ws_tls(&self, address: &str, port: u16, rng: &mut impl Rng) -> ProxyConfig {
+        let sni = self.snis[rng.gen_range(0..self.snis.len())];
+        ProxyConfig {
+            protocol: Protocol::Trojan,
+            transmission: Transmission::WebSocket,
+            address: address.to_string(),
+            port,
+            id: uuid::Uuid::new_v4().to_string(),
+            security: Security::TLS,
+            sni: sni.to_string(),
+            alpn: vec!["h2".to_string(), "http/1.1".to_string()],
+            fingerprint: self.fingerprints[rng.gen_range(0..self.fingerprints.len())].to_string(),
+            path: Some(self.paths[rng.gen_range(0..self.paths.len())].to_string()),
+            host: Some(sni.to_string()),
+            service_name: None,
+            public_key: None,
+            short_id: None,
+        }
+    }
+
+    fn create_trojan_grpc_tls(&self, address: &str, port: u16, rng: &mut impl Rng) -> ProxyConfig {
+        let sni = self.snis[rng.gen_range(0..self.snis.len())];
+        ProxyConfig {
+            protocol: Protocol::Trojan,
+            transmission: Transmission::GRPC,
+            address: address.to_string(),
+            port,
+            id: uuid::Uuid::new_v4().to_string(),
+            security: Security::TLS,
+            sni: sni.to_string(),
+            alpn: vec!["h2".to_string()],
+            fingerprint: self.fingerprints[rng.gen_range(0..self.fingerprints.len())].to_string(),
+            path: None,
+            host: None,
+            service_name: Some(format!("trojan{}", rng.gen_range(1000..9999))),
+            public_key: None,
+            short_id: None,
+        }
+    }
+
+    fn create_shadowsocks(&self, address: &str, port: u16, rng: &mut impl Rng) -> ProxyConfig {
+        ProxyConfig {
+            protocol: Protocol::Shadowsocks,
+            transmission: Transmission::TCP,
+            address: address.to_string(),
+            port,
+            id: self.generate_password(rng),
+            security: Security::None,
+            sni: String::new(),
+            alpn: vec![],
+            fingerprint: String::new(),
+            path: None,
+            host: None,
+            service_name: None,
+            public_key: None,
+            short_id: None,
+        }
+    }
+
+    fn generate_public_key(&self, rng: &mut impl Rng) -> String {
         let bytes: Vec<u8> = (0..32).map(|_| rng.gen()).collect();
         general_purpose::STANDARD.encode(&bytes)
     }
 
     fn generate_short_id(&self, rng: &mut impl Rng) -> String {
-        let hex_chars: Vec<char> = "0123456789abcdef".chars().collect();
-        (0..8)
-            .map(|_| hex_chars[rng.gen_range(0..hex_chars.len())])
-            .collect()
+        let hex: Vec<char> = "0123456789abcdef".chars().collect();
+        (0..8).map(|_| hex[rng.gen_range(0..16)]).collect()
     }
 
-    pub fn to_subscription_link(&self, config: &ProxyConfig) -> String {
+    fn generate_password(&self, rng: &mut impl Rng) -> String {
+        let chars: Vec<char> = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".chars().collect();
+        (0..16).map(|_| chars[rng.gen_range(0..chars.len())]).collect()
+    }
+
+    pub fn to_link(&self, config: &ProxyConfig) -> String {
         match config.protocol {
-            Protocol::VLESS => self.vless_to_link(config),
-            Protocol::VMess => self.vmess_to_link(config),
-            Protocol::Trojan => self.trojan_to_link(config),
-            Protocol::Shadowsocks => self.ss_to_link(config),
+            Protocol::VLESS => self.vless_link(config),
+            Protocol::VMess => self.vmess_link(config),
+            Protocol::Trojan => self.trojan_link(config),
+            Protocol::Shadowsocks => self.ss_link(config),
         }
     }
 
-    fn vless_to_link(&self, config: &ProxyConfig) -> String {
-        let transmission_type = config.transmission.as_type_str();
-        let security_type = config.security.as_str();
-
+    fn vless_link(&self, c: &ProxyConfig) -> String {
         let mut params = vec![
-            format!("type={}", transmission_type),
-            format!("security={}", security_type),
-            format!("fp={}", config.fingerprint),
-            format!("sni={}", config.sni),
+            format!("type={}", c.transmission.as_type_str()),
+            format!("security={}", c.security.as_str()),
         ];
 
-        if !config.alpn.is_empty() {
-            params.push(format!("alpn={}", config.alpn.join(",")));
+        if !c.fingerprint.is_empty() {
+            params.push(format!("fp={}", c.fingerprint));
         }
-
-        if let Some(ref path) = config.path {
+        if !c.sni.is_empty() {
+            params.push(format!("sni={}", c.sni));
+        }
+        if !c.alpn.is_empty() {
+            params.push(format!("alpn={}", c.alpn.join(",")));
+        }
+        if let Some(ref path) = c.path {
             params.push(format!("path={}", urlencoding::encode(path)));
         }
-
-        if let Some(ref host) = config.host {
+        if let Some(ref host) = c.host {
             params.push(format!("host={}", host));
         }
-
-        if let Some(ref service_name) = config.service_name {
-            params.push(format!("serviceName={}", service_name));
+        if let Some(ref sn) = c.service_name {
+            params.push(format!("serviceName={}", sn));
+        }
+        if let Some(ref pk) = c.public_key {
+            params.push(format!("pbk={}", pk));
+        }
+        if let Some(ref sid) = c.short_id {
+            params.push(format!("sid={}", sid));
         }
 
-        if let Some(ref public_key) = config.public_key {
-            params.push(format!("pbk={}", public_key));
-        }
-
-        if let Some(ref short_id) = config.short_id {
-            params.push(format!("sid={}", short_id));
-        }
-
-        let remark = format!(
-            "{}_{}_{}",
-            config.protocol.as_str(),
-            transmission_type,
-            config.address
-        );
-
+        let name = format!("VLESS_{}_{}", c.transmission.as_str(), c.address);
         format!(
             "vless://{}@{}:{}?{}&encryption=none#{}",
-            config.id,
-            config.address,
-            config.port,
+            c.id, c.address, c.port,
             params.join("&"),
-            urlencoding::encode(&remark)
+            urlencoding::encode(&name)
         )
     }
 
-    fn vmess_to_link(&self, config: &ProxyConfig) -> String {
-        let vmess_json = serde_json::json!({
+    fn vmess_link(&self, c: &ProxyConfig) -> String {
+        let json = serde_json::json!({
             "v": "2",
-            "ps": format!("VMess_{}_{}", config.transmission.as_str(), config.address),
-            "add": config.address,
-            "port": config.port,
-            "id": config.id,
+            "ps": format!("VMess_{}_{}", c.transmission.as_str(), c.address),
+            "add": c.address,
+            "port": c.port,
+            "id": c.id,
             "aid": "0",
             "scy": "auto",
-            "net": match config.transmission {
-                Transmission::TCP => "tcp",
-                Transmission::WebSocket => "ws",
-                Transmission::GRPC => "grpc",
-                Transmission::HTTPUpgrade => "httpupgrade",
-                _ => "tcp",
-            },
+            "net": c.transmission.as_type_str(),
             "type": "none",
-            "host": config.host.clone().unwrap_or_default(),
-            "path": config.path.clone().unwrap_or_default(),
-            "tls": if config.security == Security::TLS { "tls" } else { "" },
-            "sni": config.sni,
-            "alpn": config.alpn.join(","),
-            "fp": config.fingerprint,
+            "host": c.host.clone().unwrap_or_default(),
+            "path": c.path.clone().unwrap_or_default(),
+            "tls": if c.security == Security::TLS { "tls" } else { "" },
+            "sni": c.sni,
+            "alpn": c.alpn.join(","),
+            "fp": c.fingerprint,
         });
-
-        format!(
-            "vmess://{}",
-            general_purpose::STANDARD.encode(vmess_json.to_string())
-        )
+        format!("vmess://{}", general_purpose::STANDARD.encode(json.to_string()))
     }
 
-    fn trojan_to_link(&self, config: &ProxyConfig) -> String {
-        let transmission_type = match config.transmission {
-            Transmission::WebSocket => "ws",
-            Transmission::GRPC => "grpc",
-            _ => "tcp",
-        };
-
+    fn trojan_link(&self, c: &ProxyConfig) -> String {
         let mut params = vec![
-            format!("type={}", transmission_type),
+            format!("type={}", c.transmission.as_type_str()),
             "security=tls".to_string(),
-            format!("sni={}", config.sni),
-            format!("fp={}", config.fingerprint),
+            format!("sni={}", c.sni),
         ];
 
-        if !config.alpn.is_empty() {
-            params.push(format!("alpn={}", config.alpn.join(",")));
+        if !c.fingerprint.is_empty() {
+            params.push(format!("fp={}", c.fingerprint));
         }
-
-        if let Some(ref path) = config.path {
+        if !c.alpn.is_empty() {
+            params.push(format!("alpn={}", c.alpn.join(",")));
+        }
+        if let Some(ref path) = c.path {
             params.push(format!("path={}", urlencoding::encode(path)));
         }
-
-        if let Some(ref host) = config.host {
+        if let Some(ref host) = c.host {
             params.push(format!("host={}", host));
         }
+        if let Some(ref sn) = c.service_name {
+            params.push(format!("serviceName={}", sn));
+        }
 
-        let remark = format!("Trojan_{}_{}", transmission_type, config.address);
-
+        let name = format!("Trojan_{}_{}", c.transmission.as_str(), c.address);
         format!(
             "trojan://{}@{}:{}?{}#{}",
-            config.id,
-            config.address,
-            config.port,
+            c.id, c.address, c.port,
             params.join("&"),
-            urlencoding::encode(&remark)
+            urlencoding::encode(&name)
         )
     }
 
-    fn ss_to_link(&self, config: &ProxyConfig) -> String {
+    fn ss_link(&self, c: &ProxyConfig) -> String {
         let method = "chacha20-ietf-poly1305";
-        let password = if config.id.len() >= 16 {
-            &config.id[..16]
-        } else {
-            &config.id
-        };
-        let userinfo = format!("{}:{}", method, password);
+        let userinfo = format!("{}:{}", method, c.id);
         let encoded = general_purpose::STANDARD.encode(&userinfo);
-
-        format!(
-            "ss://{}@{}:{}#SS_{}",
-            encoded,
-            config.address,
-            config.port,
-            urlencoding::encode(&config.address)
-        )
+        format!("ss://{}@{}:{}#SS_{}", encoded, c.address, c.port, urlencoding::encode(&c.address))
     }
 }
