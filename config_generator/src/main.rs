@@ -1,5 +1,4 @@
 use std::fs;
-use std::path::Path;
 
 mod generator;
 mod tester;
@@ -99,7 +98,7 @@ fn parse_proxy_line(line: &str) -> Option<ProxyInfo> {
     // Extract IP address
     let parts: Vec<&str> = line.split_whitespace().collect();
     
-    for (i, part) in parts.iter().enumerate() {
+    for (_i, part) in parts.iter().enumerate() {
         // Find IP address (format: xxx.xxx.xxx.xxx)
         if part.contains('.') && part.split('.').count() == 4 {
             let ip = part.trim_matches(|c: char| !c.is_numeric() && c != '.').to_string();
