@@ -1,0 +1,265 @@
+# Advanced Configuration Settings
+# Copy this file to config.toml and customize as needed
+
+[scanner]
+# Port to scan (default: 443)
+port = 443
+
+# Timeout for each connection in seconds
+timeout_seconds = 5
+
+# Maximum number of concurrent scans
+max_concurrent = 100
+
+# Retry attempts for failed connections
+retry_attempts = 2
+
+[generator]
+# Number of configs to generate per proxy
+configs_per_proxy = 15
+
+# Enable Reality protocol (recommended for VLESS)
+enable_reality = true
+
+# Enable TLS protocol
+enable_tls = true
+
+# Protocols to generate (all enabled by default)
+[generator.protocols]
+vless = true
+vmess = true
+trojan = true
+shadowsocks = false  # Less common, disabled by default
+
+# Transmissions to use
+[generator.transmissions]
+tcp = true
+websocket = true
+grpc = true
+xhttp = true
+httpupgrade = true
+splithttp = true
+
+# Priority order for protocol-transmission combinations
+# Higher number = higher priority
+[generator.priority]
+vless_xhttp_reality = 100
+vless_grpc_reality = 95
+vless_websocket_tls = 90
+vless_httpupgrade_reality = 85
+vless_splithttp_reality = 80
+vmess_websocket_tls = 75
+vmess_grpc_tls = 70
+trojan_websocket_tls = 65
+trojan_grpc_tls = 60
+
+[tester]
+# Timeout for testing each config in seconds
+timeout_seconds = 10
+
+# Maximum number of concurrent tests
+max_concurrent = 50
+
+# Enable TCP connectivity test
+test_tcp = true
+
+# Enable TLS handshake test
+test_tls = true
+
+# Enable protocol-specific handshake test
+test_protocol = true
+
+# Minimum acceptable response time in ms (configs slower than this get lower priority)
+acceptable_response_time_ms = 500
+
+[output]
+# Output directory
+directory = "sub/configs"
+
+# Generate subscription link
+generate_subscription = true
+
+# Generate JSON output
+generate_json = true
+
+# Generate individual protocol files
+generate_protocol_files = true
+
+# Generate QR codes
+generate_qr_codes = true
+
+# Generate markdown report
+generate_markdown_report = true
+
+# Generate statistics file
+generate_statistics = true
+
+[sni]
+# Popular SNI domains (used for TLS/Reality)
+# Add or remove domains as needed
+domains = [
+    "www.speedtest.net",
+    "www.yahoo.com",
+    "www.cloudflare.com",
+    "www.google.com",
+    "www.microsoft.com",
+    "www.bing.com",
+    "www.booking.com",
+    "www.cisco.com",
+    "www.wikipedia.org",
+    "discord.com",
+    "telegram.org",
+    "www.ubuntu.com",
+    "www.nvidia.com",
+    "www.amd.com",
+    "aws.amazon.com",
+    "github.com",
+    "gitlab.com",
+    "www.docker.com",
+    "www.reddit.com",
+    "www.twitch.tv",
+]
+
+[paths]
+# Popular paths for WebSocket and HTTP-based transmissions
+paths = [
+    "/",
+    "/ws",
+    "/vless",
+    "/vmess",
+    "/api",
+    "/download",
+    "/upgrade",
+    "/socket",
+    "/graphql",
+    "/cdn-cgi/trace",
+    "/v2ray",
+    "/xray",
+    "/trojan",
+]
+
+[fingerprints]
+# Browser fingerprints for TLS ClientHello
+fingerprints = [
+    "chrome",
+    "firefox",
+    "safari",
+    "ios",
+    "android",
+    "edge",
+    "360",
+    "qq",
+    "random",
+    "randomized",
+]
+
+[alpn]
+# ALPN (Application-Layer Protocol Negotiation) combinations
+# These are used during TLS handshake
+combinations = [
+    ["h2", "http/1.1"],  # Most compatible
+    ["h2"],               # HTTP/2 only
+    ["http/1.1"],        # HTTP/1.1 only
+    ["h3"],              # HTTP/3 (experimental)
+]
+
+[github_actions]
+# Cron schedule (default: every 24 hours)
+schedule = "0 */24 * * *"
+
+# Enable automatic releases
+enable_releases = false
+
+# Enable cache for faster builds
+enable_cache = true
+
+# Timeout for entire workflow in minutes
+workflow_timeout_minutes = 90
+
+[optimization]
+# Sort configs by response time
+sort_by_response_time = true
+
+# Remove duplicate configs
+remove_duplicates = true
+
+# Filter configs by success rate (0.0 to 1.0)
+min_success_rate = 0.0
+
+# Maximum number of configs in subscription
+max_subscription_configs = 200
+
+[logging]
+# Log level: debug, info, warn, error
+level = "info"
+
+# Save logs to file
+save_to_file = true
+
+# Log file path
+log_file = "sub/logs/generator.log"
+
+[advanced]
+# Custom UUID format (leave empty for random generation)
+custom_uuid_prefix = ""
+
+# Use geographic location for config naming
+use_geographic_naming = true
+
+# Include response time in config names
+include_response_time = true
+
+# Generate configs even for slow proxies
+include_slow_proxies = true
+
+# Minimum proxy response time to consider (ms)
+min_proxy_response_time = 0
+
+# Maximum proxy response time to consider (ms)
+max_proxy_response_time = 5000
+
+# Example custom configuration templates
+# These will be merged with default templates
+
+[[custom_templates]]
+name = "Custom VLESS Reality"
+protocol = "vless"
+transmission = "xhttp"
+security = "reality"
+custom_parameters = { flow = "xtls-rprx-vision" }
+
+[[custom_templates]]
+name = "Custom VMess WebSocket"
+protocol = "vmess"
+transmission = "websocket"
+security = "tls"
+custom_parameters = { alterid = 0, security = "auto" }
+
+# Blacklist specific IPs or IP ranges
+[blacklist]
+ips = []
+ranges = []
+
+# Whitelist specific IPs or IP ranges (if set, only these will be used)
+[whitelist]
+ips = []
+ranges = []
+
+# Custom ISP whitelist for scanner
+[isp_whitelist]
+providers = [
+    "OVH",
+    "DigitalOcean",
+    "Linode",
+    "Amazon",
+    "Google",
+    "Microsoft",
+    "Cloudflare",
+]
+
+# Notifications (future feature)
+[notifications]
+enabled = false
+webhook_url = ""
+notify_on_success = true
+notify_on_failure = true
