@@ -15,6 +15,9 @@ urlencoding = "2.1"
 qrcode = "0.14"
 futures = "0.3"
 tokio-native-tls = "0.3"
+native-tls = "0.2"
+thiserror = "1.0"
+anyhow = "1.0"
 
 [[bin]]
 name = "config-generator"
