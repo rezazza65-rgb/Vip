@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
-use crate::generator::{ConfigGenerator, ProxyConfig};
+use crate::generator::ConfigGenerator;
 use crate::tester::{TestResult, TestStatistics};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -66,7 +66,8 @@ impl OutputGenerator {
 
         // Create subscription link (base64 encoded list of all configs)
         let subscription_content = subscription_links.join("\n");
-        let subscription_link = base64::encode(&subscription_content);
+        use base64::{Engine as _, engine::general_purpose};
+        let subscription_link = general_purpose::STANDARD.encode(&subscription_content);
 
         let statistics = TestStatistics::from_results(&test_results);
         let timestamp = chrono::Utc::now().to_rfc3339();
