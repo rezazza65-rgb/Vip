@@ -178,6 +178,7 @@ impl ConfigGenerator {
         let mut configs = Vec::new();
         let mut rng = rand::thread_rng();
 
+        // Priority combinations - most likely to work
         let priority_combinations = vec![
             (Protocol::VLESS, Transmission::XHTTP, Security::Reality),
             (Protocol::VLESS, Transmission::GRPC, Security::Reality),
@@ -202,6 +203,7 @@ impl ConfigGenerator {
             configs.push(config);
         }
 
+        // Additional combinations
         for protocol in &[Protocol::VLESS, Protocol::VMess, Protocol::Trojan] {
             for transmission in &[Transmission::TCP, Transmission::WebSocket] {
                 let security = if *protocol == Protocol::VLESS {
@@ -221,6 +223,17 @@ impl ConfigGenerator {
                 configs.push(config);
             }
         }
+
+        // Add Shadowsocks config
+        let ss_config = self.create_config(
+            proxy_ip,
+            port,
+            Protocol::Shadowsocks,
+            Transmission::TCP,
+            Security::None,
+            &mut rng,
+        );
+        configs.push(ss_config);
 
         configs
     }
