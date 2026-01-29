@@ -35,10 +35,18 @@ jobs:
       run: cargo build --release
 
     - name: Give Execute Permission to Scanner
-      run: chmod +x ./target/release/RScanner
+      run: chmod +x ./target/release/RScanner || chmod +x ./target/release/rscanner || true
 
     - name: Run Proxy Scanner
-      run: ./target/release/RScanner
+      run: |
+        if [ -f ./target/release/RScanner ]; then
+          ./target/release/RScanner
+        elif [ -f ./target/release/rscanner ]; then
+          ./target/release/rscanner
+        else
+          echo "Scanner binary not found"
+          exit 1
+        fi
       continue-on-error: true
 
     # ========================================
