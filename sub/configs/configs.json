@@ -1,14 +1,14 @@
 {
-  "subscription_link": "",
   "configs": [],
+  "generated_at": "2026-01-29T11:20:52.804558425+00:00",
   "statistics": {
-    "total_configs": 0,
-    "working_configs": 0,
-    "failed_configs": 0,
-    "success_rate": 0.0,
     "average_response_time_ms": 0.0,
+    "failed_configs": 0,
     "fastest_response_time_ms": null,
-    "slowest_response_time_ms": null
+    "slowest_response_time_ms": null,
+    "success_rate": 0.0,
+    "total_configs": 0,
+    "working_configs": 0
   },
-  "generated_at": "2026-01-29T11:20:52.804558425+00:00"
+  "subscription_link": ""
 }
