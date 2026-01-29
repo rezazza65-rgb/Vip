@@ -1,4 +1,5 @@
 use std::fs;
+use std::path::Path;
 
 mod generator;
 mod tester;
@@ -14,7 +15,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("==========================================\n");
 
     // Ensure output directory exists
-    fs::create_dir_all("sub/configs/qr_codes")?;
+    let output_dir = "sub/configs";
+    fs::create_dir_all(format!("{}/qr_codes", output_dir))?;
+    println!("📁 Output directory: {}", output_dir);
 
     // Read proxy IPs from the scanner output
     let proxies = read_proxy_list("sub/ProxyIP-Daily.md")?;
@@ -32,15 +35,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let empty_bundle = output_generator.create_empty_output();
         
         // Save empty files to disk
-        let output_dir = "sub/configs";
-        output_generator.save_to_files(&empty_bundle, output_dir)?;
+        match output_generator.save_to_files(&empty_bundle, output_dir) {
+            Ok(()) => println!("✓ Empty config files created"),
+            Err(e) => eprintln!("❌ Failed to save config files: {}", e),
+        }
         
         // Generate empty QR codes directory
-        subscription_manager.save_qr_codes(&empty_bundle.configs, output_dir)?;
+        match subscription_manager.save_qr_codes(&empty_bundle.configs, output_dir) {
+            Ok(()) => println!("✓ QR code directory initialized"),
+            Err(e) => eprintln!("❌ Failed to initialize QR codes: {}", e),
+        }
         
         println!("\n✅ Empty output files created successfully!");
         println!("   Location: {}/", output_dir);
         println!("\n📝 Note: These files will be populated once live proxies are detected.");
+        
+        // List created files
+        list_output_files(output_dir);
         
         return Ok(());
     }
@@ -70,12 +81,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let output_bundle = output_generator.generate_output(test_results);
     
     // Save to files
-    let output_dir = "sub/configs";
-    output_generator.save_to_files(&output_bundle, output_dir)?;
+    match output_generator.save_to_files(&output_bundle, output_dir) {
+        Ok(()) => println!("✓ Config files saved"),
+        Err(e) => {
+            eprintln!("❌ Failed to save config files: {}", e);
+            return Err(e.into());
+        }
+    }
     
     // Generate QR codes
-    println!("📱 Generating QR codes...");
-    subscription_manager.save_qr_codes(&output_bundle.configs, output_dir)?;
+    println!("\n📱 Generating QR codes...");
+    match subscription_manager.save_qr_codes(&output_bundle.configs, output_dir) {
+        Ok(()) => println!("✓ QR codes generated"),
+        Err(e) => eprintln!("⚠️ QR code generation had issues: {}", e),
+    }
 
     println!("\n✨ Success! Output saved to: {}/", output_dir);
     println!("\n📊 Summary:");
@@ -85,20 +104,63 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   Success Rate: {:.2}%", output_bundle.statistics.success_rate);
     println!("   Avg Response: {:.2} ms", output_bundle.statistics.average_response_time_ms);
 
+    // List created files
+    list_output_files(output_dir);
+
     Ok(())
+}
+
+fn list_output_files(output_dir: &str) {
+    println!("\n📂 Created files:");
+    
+    let expected_files = vec![
+        "subscription.txt",
+        "configs.json",
+        "config_links.txt",
+        "vless_configs.txt",
+        "vmess_configs.txt",
+        "trojan_configs.txt",
+        "shadowsocks_configs.txt",
+        "statistics.txt",
+        "README.md",
+    ];
+
+    for file in expected_files {
+        let path = Path::new(output_dir).join(file);
+        if path.exists() {
+            if let Ok(metadata) = fs::metadata(&path) {
+                println!("   ✓ {} ({} bytes)", file, metadata.len());
+            } else {
+                println!("   ✓ {}", file);
+            }
+        } else {
+            println!("   ✗ {} (missing)", file);
+        }
+    }
+
+    // Check QR codes directory
+    let qr_dir = Path::new(output_dir).join("qr_codes");
+    if qr_dir.exists() {
+        if let Ok(entries) = fs::read_dir(&qr_dir) {
+            let count = entries.count();
+            println!("   ✓ qr_codes/ ({} files)", count);
+        }
+    }
 }
 
 #[derive(Debug)]
 struct ProxyInfo {
     ip: String,
     port: u16,
+    #[allow(dead_code)]
     location: String,
+    #[allow(dead_code)]
     response_time: u32,
 }
 
 fn read_proxy_list(file_path: &str) -> Result<Vec<ProxyInfo>, Box<dyn std::error::Error>> {
     // Check if file exists
-    if !std::path::Path::new(file_path).exists() {
+    if !Path::new(file_path).exists() {
         println!("⚠️  Scanner output file not found: {}", file_path);
         println!("   Creating empty proxy list...");
         return Ok(Vec::new());
@@ -118,37 +180,54 @@ fn read_proxy_list(file_path: &str) -> Result<Vec<ProxyInfo>, Box<dyn std::error
     let first_lines: Vec<&str> = content.lines().take(10).collect();
     println!("📄 Reading scanner output file (first 10 lines):");
     for (i, line) in first_lines.iter().enumerate() {
-        println!("   Line {}: {}", i + 1, line);
+        let truncated = if line.len() > 80 {
+            format!("{}...", &line[..80])
+        } else {
+            line.to_string()
+        };
+        println!("   Line {}: {}", i + 1, truncated);
     }
     println!();
 
     // Parse each line looking for proxy information
-    for (line_num, line) in content.lines().enumerate() {
+    let mut parse_attempts = 0;
+    let mut parse_failures = 0;
+
+    for line in content.lines() {
         // Skip HTML tags and markdown formatting
-        if line.trim().starts_with('<') || 
-           line.trim().starts_with('>') || 
-           line.trim().starts_with('#') ||
-           line.trim().starts_with('|') ||
-           line.trim().starts_with('[') ||
-           line.trim().starts_with('*') ||
-           line.trim().is_empty() {
+        let trimmed = line.trim();
+        if trimmed.starts_with('<') || 
+           trimmed.starts_with('>') || 
+           trimmed.starts_with('#') ||
+           trimmed.starts_with('|') ||
+           trimmed.starts_with('[') ||
+           trimmed.starts_with('*') ||
+           trimmed.starts_with('-') ||
+           trimmed.is_empty() {
             continue;
         }
         
         // Look for lines with "PROXY LIVE" indicator
         if line.contains("PROXY LIVE") {
+            parse_attempts += 1;
             if let Some(proxy) = parse_proxy_line(line) {
                 proxies.push(proxy);
             } else {
-                // Debug failed parse
-                if line_num < 20 {  // Only show first 20 failures
-                    println!("   ⚠️  Failed to parse line {}: {}", line_num + 1, line);
+                parse_failures += 1;
+                if parse_failures <= 5 {
+                    println!("   ⚠️  Parse failed: {}", 
+                        if line.len() > 60 { format!("{}...", &line[..60]) } else { line.to_string() });
                 }
             }
         }
     }
 
-    println!("\n✅ Successfully parsed {} proxies from file\n", proxies.len());
+    if parse_failures > 5 {
+        println!("   ... and {} more parse failures", parse_failures - 5);
+    }
+
+    println!("\n✅ Parsed {}/{} proxy entries successfully\n", 
+             proxies.len(), parse_attempts);
 
     Ok(proxies)
 }
@@ -159,67 +238,68 @@ fn parse_proxy_line(line: &str) -> Option<ProxyInfo> {
     // Format 2: "PROXY LIVE: 155.138.128.135 (314 ms) - Toronto"
     // Format 3: "1043 PROXY LIVE ✅: 94.131.101.246 (1077 ms) - Secaucus"
     
-    // First, try to find the IP address after colon
-    if let Some(colon_pos) = line.find(':') {
-        let after_colon = &line[colon_pos + 1..];
+    // Find the colon after "PROXY LIVE"
+    let colon_pos = line.find(':')?;
+    let after_colon = &line[colon_pos + 1..];
+    
+    // Split by whitespace to find components
+    let parts: Vec<&str> = after_colon.split_whitespace().collect();
+    
+    for part in &parts {
+        // Skip if it contains special characters that aren't part of IP
+        if part.contains('✅') || part.contains("ms") || part.contains('(') || part.contains(')') {
+            continue;
+        }
         
-        // Split by whitespace to find components
-        let parts: Vec<&str> = after_colon.split_whitespace().collect();
+        // Check if this looks like an IP address
+        let ip_candidate = part.trim().trim_matches(|c: char| !c.is_numeric() && c != '.');
         
-        for (idx, part) in parts.iter().enumerate() {
-            // Check if this looks like an IP address (contains dots and numbers)
-            if part.contains('.') && !part.contains("✅") && !part.contains("ms") {
-                // Try to clean up the IP
-                let ip_candidate = part
-                    .trim()
-                    .trim_matches(|c: char| !c.is_numeric() && c != '.');
-                
-                // Validate IP format
-                if validate_ip(ip_candidate) {
-                    // Extract response time - look for pattern like "(989 ms)"
-                    let response_time = extract_number_from_parentheses(line, "ms)").unwrap_or(0);
-                    
-                    // Extract location (everything after the last hyphen)
-                    let location = if let Some(dash_pos) = line.rfind('-') {
-                        line[dash_pos + 1..].trim().to_string()
-                    } else {
-                        "Unknown".to_string()
-                    };
-                    
-                    return Some(ProxyInfo {
-                        ip: ip_candidate.to_string(),
-                        port: 443, // Default port from scanner
-                        location,
-                        response_time,
-                    });
-                }
-            }
+        // Validate IP format
+        if validate_ip(ip_candidate) {
+            // Extract response time - look for pattern like "(989 ms)"
+            let response_time = extract_response_time(line).unwrap_or(0);
+            
+            // Extract location (everything after the last hyphen, excluding parentheses content)
+            let location = extract_location(line);
+            
+            return Some(ProxyInfo {
+                ip: ip_candidate.to_string(),
+                port: 443, // Default port
+                location,
+                response_time,
+            });
         }
     }
     
     None
 }
 
-fn extract_number_from_parentheses(text: &str, end_marker: &str) -> Option<u32> {
-    // Find the end marker (like "ms)")
-    if let Some(marker_pos) = text.find(end_marker) {
-        let before_marker = &text[..marker_pos];
-        
-        // Find the last opening parenthesis before the marker
-        if let Some(paren_pos) = before_marker.rfind('(') {
-            let number_part = &before_marker[paren_pos + 1..];
-            
-            // Extract just the numbers
-            let num_str: String = number_part
-                .chars()
-                .filter(|c| c.is_numeric())
-                .collect();
-            
-            return num_str.parse::<u32>().ok();
+fn extract_response_time(text: &str) -> Option<u32> {
+    // Find pattern like "(989 ms)"
+    if let Some(start) = text.find('(') {
+        if let Some(end) = text[start..].find("ms") {
+            let num_part = &text[start + 1..start + end];
+            let num_str: String = num_part.chars().filter(|c| c.is_numeric()).collect();
+            return num_str.parse().ok();
         }
     }
-    
     None
+}
+
+fn extract_location(text: &str) -> String {
+    // Find the last dash and extract location
+    if let Some(dash_pos) = text.rfind('-') {
+        let location = text[dash_pos + 1..].trim();
+        // Clean up any trailing content
+        let clean: String = location
+            .chars()
+            .take_while(|c| c.is_alphabetic() || c.is_whitespace())
+            .collect();
+        if !clean.is_empty() {
+            return clean.trim().to_string();
+        }
+    }
+    "Unknown".to_string()
 }
 
 fn validate_ip(ip: &str) -> bool {
@@ -230,12 +310,7 @@ fn validate_ip(ip: &str) -> bool {
     }
 
     parts.iter().all(|part| {
-        // Each part should be a valid number between 0-255
-        if let Ok(num) = part.parse::<u8>() {
-            true
-        } else {
-            false
-        }
+        part.parse::<u8>().is_ok()
     })
 }
 
@@ -247,9 +322,12 @@ mod tests {
     fn test_ip_validation() {
         assert!(validate_ip("192.168.1.1"));
         assert!(validate_ip("8.8.8.8"));
+        assert!(validate_ip("255.255.255.255"));
+        assert!(validate_ip("0.0.0.0"));
         assert!(!validate_ip("256.1.1.1"));
         assert!(!validate_ip("192.168.1"));
         assert!(!validate_ip("invalid"));
+        assert!(!validate_ip("192.168.1.1.1"));
     }
 
     #[test]
@@ -283,13 +361,22 @@ mod tests {
         let proxy = parse_proxy_line(line);
         
         assert!(proxy.is_some());
-        assert_eq!(proxy.unwrap().ip, "155.138.128.135");
+        let p = proxy.unwrap();
+        assert_eq!(p.ip, "155.138.128.135");
+        assert_eq!(p.response_time, 314);
     }
     
     #[test]
-    fn test_number_extraction() {
-        assert_eq!(extract_number_from_parentheses("test (123 ms) end", "ms)"), Some(123));
-        assert_eq!(extract_number_from_parentheses("test (4567 ms) end", "ms)"), Some(4567));
-        assert_eq!(extract_number_from_parentheses("no number here ms)", "ms)"), None);
+    fn test_response_time_extraction() {
+        assert_eq!(extract_response_time("test (123 ms) end"), Some(123));
+        assert_eq!(extract_response_time("test (4567 ms) end"), Some(4567));
+        assert_eq!(extract_response_time("no parens here"), None);
+    }
+
+    #[test]
+    fn test_location_extraction() {
+        assert_eq!(extract_location("something - Toronto"), "Toronto");
+        assert_eq!(extract_location("something - New York"), "New York");
+        assert_eq!(extract_location("no dash here"), "Unknown");
     }
 }
