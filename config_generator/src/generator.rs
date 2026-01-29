@@ -27,6 +27,23 @@ pub enum Protocol {
     Shadowsocks,
 }
 
+impl Protocol {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Protocol::VLESS => "VLESS",
+            Protocol::VMess => "VMess",
+            Protocol::Trojan => "Trojan",
+            Protocol::Shadowsocks => "SS",
+        }
+    }
+}
+
+impl std::fmt::Display for Protocol {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum Transmission {
     TCP,
@@ -37,11 +54,57 @@ pub enum Transmission {
     SplitHTTP,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+impl Transmission {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Transmission::TCP => "TCP",
+            Transmission::WebSocket => "WS",
+            Transmission::GRPC => "gRPC",
+            Transmission::XHTTP => "XHTTP",
+            Transmission::HTTPUpgrade => "HTTPUpgrade",
+            Transmission::SplitHTTP => "SplitHTTP",
+        }
+    }
+    
+    pub fn as_type_str(&self) -> &'static str {
+        match self {
+            Transmission::TCP => "tcp",
+            Transmission::WebSocket => "ws",
+            Transmission::GRPC => "grpc",
+            Transmission::XHTTP => "xhttp",
+            Transmission::HTTPUpgrade => "httpupgrade",
+            Transmission::SplitHTTP => "splithttp",
+        }
+    }
+}
+
+impl std::fmt::Display for Transmission {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum Security {
     TLS,
     Reality,
     None,
+}
+
+impl Security {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Security::TLS => "tls",
+            Security::Reality => "reality",
+            Security::None => "none",
+        }
+    }
+}
+
+impl std::fmt::Display for Security {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
 }
 
 pub struct ConfigGenerator {
@@ -49,6 +112,12 @@ pub struct ConfigGenerator {
     popular_paths: Vec<String>,
     fingerprints: Vec<String>,
     alpn_combinations: Vec<Vec<String>>,
+}
+
+impl Default for ConfigGenerator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ConfigGenerator {
@@ -218,12 +287,10 @@ impl ConfigGenerator {
     }
 
     fn generate_uuid(&self) -> String {
-        use uuid::Uuid;
-        Uuid::new_v4().to_string()
+        uuid::Uuid::new_v4().to_string()
     }
 
     fn generate_public_key(&self) -> String {
-        use rand::Rng;
         let mut rng = rand::thread_rng();
         let bytes: Vec<u8> = (0..32).map(|_| rng.gen()).collect();
         use base64::{Engine as _, engine::general_purpose};
@@ -231,11 +298,11 @@ impl ConfigGenerator {
     }
 
     fn generate_short_id(&self, rng: &mut impl Rng) -> String {
-        let hex_chars = "0123456789abcdef";
+        let hex_chars: Vec<char> = "0123456789abcdef".chars().collect();
         (0..8)
             .map(|_| {
                 let idx = rng.gen_range(0..hex_chars.len());
-                hex_chars.chars().nth(idx).unwrap()
+                hex_chars[idx]
             })
             .collect()
     }
@@ -250,20 +317,8 @@ impl ConfigGenerator {
     }
 
     fn vless_to_link(&self, config: &ProxyConfig) -> String {
-        let transmission_type = match config.transmission {
-            Transmission::TCP => "tcp",
-            Transmission::WebSocket => "ws",
-            Transmission::GRPC => "grpc",
-            Transmission::XHTTP => "xhttp",
-            Transmission::HTTPUpgrade => "httpupgrade",
-            Transmission::SplitHTTP => "splithttp",
-        };
-
-        let security_type = match config.security {
-            Security::TLS => "tls",
-            Security::Reality => "reality",
-            Security::None => "none",
-        };
+        let transmission_type = config.transmission.as_type_str();
+        let security_type = config.security.as_str();
 
         let mut params = vec![
             format!("type={}", transmission_type),
@@ -298,18 +353,17 @@ impl ConfigGenerator {
 
         let remark = format!(
             "{}_{}_{}",
-            config.protocol.to_string(),
+            config.protocol.as_str(),
             transmission_type,
             config.address
         );
 
         format!(
-            "vless://{}@{}:{}?{}&{}#{}",
+            "vless://{}@{}:{}?{}&encryption=none#{}",
             config.id,
             config.address,
             config.port,
             params.join("&"),
-            format!("encryption=none"),
             urlencoding::encode(&remark)
         )
     }
@@ -317,7 +371,7 @@ impl ConfigGenerator {
     fn vmess_to_link(&self, config: &ProxyConfig) -> String {
         let vmess_json = serde_json::json!({
             "v": "2",
-            "ps": format!("VMess_{}_{}", config.transmission.to_string(), config.address),
+            "ps": format!("VMess_{}_{}", config.transmission.as_str(), config.address),
             "add": config.address,
             "port": config.port,
             "id": config.id,
@@ -352,7 +406,7 @@ impl ConfigGenerator {
 
         let mut params = vec![
             format!("type={}", transmission_type),
-            format!("security=tls"),
+            "security=tls".to_string(),
             format!("sni={}", config.sni),
             format!("fp={}", config.fingerprint),
         ];
@@ -383,7 +437,11 @@ impl ConfigGenerator {
 
     fn ss_to_link(&self, config: &ProxyConfig) -> String {
         let method = "chacha20-ietf-poly1305";
-        let password = &config.id[..16];
+        let password = if config.id.len() >= 16 {
+            &config.id[..16]
+        } else {
+            &config.id
+        };
         let userinfo = format!("{}:{}", method, password);
         use base64::{Engine as _, engine::general_purpose};
         let encoded = general_purpose::STANDARD.encode(&userinfo);
@@ -395,29 +453,5 @@ impl ConfigGenerator {
             config.port,
             urlencoding::encode(&config.address)
         )
-    }
-}
-
-impl Protocol {
-    pub fn to_string(&self) -> &str {
-        match self {
-            Protocol::VLESS => "VLESS",
-            Protocol::VMess => "VMess",
-            Protocol::Trojan => "Trojan",
-            Protocol::Shadowsocks => "SS",
-        }
-    }
-}
-
-impl Transmission {
-    pub fn to_string(&self) -> &str {
-        match self {
-            Transmission::TCP => "TCP",
-            Transmission::WebSocket => "WS",
-            Transmission::GRPC => "gRPC",
-            Transmission::XHTTP => "XHTTP",
-            Transmission::HTTPUpgrade => "HTTPUpgrade",
-            Transmission::SplitHTTP => "SplitHTTP",
-        }
     }
 }
