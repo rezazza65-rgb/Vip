@@ -2,11 +2,13 @@ use std::fs;
 use std::path::Path;
 use std::env;
 
-// استفاده از کتابخانه config_generator
-use config_generator::{
-    ConfigGenerator, OutputGenerator, SubscriptionManager, 
-    ConfigTester, ProxyInfo
-};
+mod generator;
+mod output;
+mod tester;
+
+use generator::ConfigGenerator;
+use output::{OutputGenerator, SubscriptionManager};
+use tester::ConfigTester;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -19,8 +21,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     println!();
 
-    let output_dir = "../sub/configs";
-    let scanner_output = "../sub/ProxyIP-Daily.md";
+    let output_dir = "sub/configs";
+    let scanner_output = "sub/ProxyIP-Daily.md";
 
     println!("📁 Creating output directories...");
     fs::create_dir_all(output_dir).ok();
@@ -137,6 +139,14 @@ fn list_output_files(output_dir: &str) {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct ProxyInfo {
+    pub ip: String,
+    pub port: u16,
+    pub location: String,
+    pub response_time: u32,
+}
+
 fn read_live_proxy_list(file_path: &str) -> Vec<ProxyInfo> {
     println!("📄 Reading scanner output: {}", file_path);
     
@@ -186,7 +196,10 @@ fn read_live_proxy_list(file_path: &str) -> Vec<ProxyInfo> {
             live_count += 1;
             
             if let Some(ip) = extract_ip(line) {
+                // Extract response time
                 let response_time = extract_time(line);
+                
+                // Extract location
                 let location = extract_location(line);
                 
                 let proxy = ProxyInfo {
@@ -218,6 +231,7 @@ fn read_live_proxy_list(file_path: &str) -> Vec<ProxyInfo> {
 }
 
 fn extract_ip(text: &str) -> Option<String> {
+    // Find IP pattern in text
     let mut result = String::new();
     let mut dot_count = 0;
     let mut num_start = false;
@@ -248,6 +262,7 @@ fn extract_ip(text: &str) -> Option<String> {
         }
     }
     
+    // Check final result
     if dot_count == 3 && is_valid_ip(&result) {
         return Some(result);
     }
@@ -275,6 +290,7 @@ fn is_valid_ip(ip: &str) -> bool {
 }
 
 fn extract_time(text: &str) -> u32 {
+    // Look for (XXX ms) pattern
     if let Some(start) = text.find('(') {
         if let Some(end) = text.find("ms") {
             if end > start {
@@ -290,6 +306,7 @@ fn extract_time(text: &str) -> u32 {
 }
 
 fn extract_location(text: &str) -> String {
+    // Extract location from end of line after last dash
     if let Some(pos) = text.rfind('-') {
         let loc = text[pos+1..].trim();
         let clean: String = loc.chars()
