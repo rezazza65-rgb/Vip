@@ -1,1 +1,1 @@
-# No Shadowsocks configurations available
+# No SS configurations available
