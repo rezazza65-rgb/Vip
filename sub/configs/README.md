@@ -1,6 +1,6 @@
 # Proxy Configurations
 
-**Generated:** 2026-01-29T20:44:12.282957064+00:00
+**Generated:** 2026-01-29T20:55:37.460223951+00:00
 
 ## Statistics
 
@@ -23,8 +23,8 @@
 
 ## Protocol Breakdown
 
-- **VLESS:** 9 total, 4 working
-- **VMess:** 6 total, 4 working
+- **VLESS:** 9 total, 5 working
+- **VMess:** 6 total, 3 working
 - **Trojan:** 6 total, 3 working
 - **SS:** 3 total, 2 working
 

@@ -1,11 +1,11 @@
-trojan://7ac2d7b4-9eed-41ee-9689-317a13259611@104.16.0.1:443?type=ws&security=tls&sni=www.amazon.com&fp=edge&alpn=h2,http/1.1&path=%2Fgraphql&host=www.amazon.com#Trojan_WS_104.16.0.1
+trojan://fbf5437f-0b96-4f72-8587-fedf8f57c02f@104.16.0.1:443?type=ws&security=tls&sni=discord.com&fp=firefox&alpn=h2,http/1.1&path=%2Fws&host=discord.com#Trojan_WS_104.16.0.1
 
-trojan://9b7d62fc-8d9e-47f8-ae2c-8b8b44114a18@104.16.0.1:443?type=grpc&security=tls&sni=discord.com&fp=random&alpn=h2&serviceName=trojan2388#Trojan_gRPC_104.16.0.1
+trojan://9abaddef-96a8-4fd2-ba91-c0500c313f6b@104.16.0.1:443?type=grpc&security=tls&sni=www.microsoft.com&fp=chrome&alpn=h2&serviceName=trojan4044#Trojan_gRPC_104.16.0.1
 
-trojan://bcf1bc04-df3d-465b-8252-257c28ea9bcf@172.67.0.1:443?type=ws&security=tls&sni=www.microsoft.com&fp=random&alpn=h2,http/1.1&path=%2F&host=www.microsoft.com#Trojan_WS_172.67.0.1
+trojan://3740461b-9520-4c88-9253-59bb643e9963@172.67.0.1:443?type=ws&security=tls&sni=www.amazon.com&fp=random&alpn=h2,http/1.1&path=%2Fgraphql&host=www.amazon.com#Trojan_WS_172.67.0.1
 
-trojan://df9650ea-b749-4f74-ae65-1473526e7a82@172.67.0.1:443?type=grpc&security=tls&sni=telegram.org&fp=random&alpn=h2&serviceName=trojan1021#Trojan_gRPC_172.67.0.1
+trojan://7f7433cd-8f68-47fd-84f1-8e197e452c03@172.67.0.1:443?type=grpc&security=tls&sni=www.microsoft.com&fp=edge&alpn=h2&serviceName=trojan8075#Trojan_gRPC_172.67.0.1
 
-trojan://2c4e0f0a-7966-42e4-89a5-639e447095c9@1.1.1.1:443?type=ws&security=tls&sni=www.google.com&fp=safari&alpn=h2,http/1.1&path=%2Fgraphql&host=www.google.com#Trojan_WS_1.1.1.1
+trojan://8954b71a-f7e8-4068-8c5c-342cf20f78fd@1.1.1.1:443?type=ws&security=tls&sni=www.amazon.com&fp=firefox&alpn=h2,http/1.1&path=%2Fgraphql&host=www.amazon.com#Trojan_WS_1.1.1.1
 
-trojan://c1783d5f-4a60-4c82-abd8-258e64eff809@1.1.1.1:443?type=grpc&security=tls&sni=discord.com&fp=safari&alpn=h2&serviceName=trojan9237#Trojan_gRPC_1.1.1.1
+trojan://628a9a80-52f2-4556-8e94-aa9127ee36b0@1.1.1.1:443?type=grpc&security=tls&sni=www.apple.com&fp=chrome&alpn=h2&serviceName=trojan9225#Trojan_gRPC_1.1.1.1

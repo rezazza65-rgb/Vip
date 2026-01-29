@@ -1,47 +1,47 @@
-vless://a10dcb32-c203-4b77-9246-0ff1149f4e91@104.16.0.1:443?type=ws&security=tls&fp=edge&sni=telegram.org&alpn=h2,http/1.1&path=%2F&host=telegram.org&encryption=none#VLESS_WS_104.16.0.1
+vless://4b23210e-ce85-4e3b-bf39-d3fc0bae7115@104.16.0.1:443?type=ws&security=tls&fp=chrome&sni=www.apple.com&alpn=h2,http/1.1&path=%2Fvmess&host=www.apple.com&encryption=none#VLESS_WS_104.16.0.1
 
-vless://017edbfd-a683-40d2-a512-37bb0f59fcbb@104.16.0.1:443?type=grpc&security=tls&fp=chrome&sni=www.speedtest.net&alpn=h2&serviceName=grpc6243&encryption=none#VLESS_gRPC_104.16.0.1
+vless://aeb773d9-01ac-4365-9079-2699a427deaa@104.16.0.1:443?type=grpc&security=tls&fp=firefox&sni=www.speedtest.net&alpn=h2&serviceName=grpc9711&encryption=none#VLESS_gRPC_104.16.0.1
 
-vless://446ab556-1246-497b-b6a4-fd98bee17cab@104.16.0.1:443?type=tcp&security=reality&fp=firefox&sni=www.apple.com&alpn=h2&pbk=kLrej3HONxNO1aU++Y0Kqxi+PUzufDEp2i8XURHJsCY=&sid=4db8ea9b&encryption=none#VLESS_TCP_104.16.0.1
+vless://ffc879d7-83a7-4b60-84b7-bd75aad4faec@104.16.0.1:443?type=tcp&security=reality&fp=random&sni=www.cloudflare.com&alpn=h2&pbk=U4r9daa67yfrepkMEy/4X6Z6EFiZRT1qda0gicpDie0=&sid=06b9e47e&encryption=none#VLESS_TCP_104.16.0.1
 
-vmess://eyJhZGQiOiIxMDQuMTYuMC4xIiwiYWlkIjoiMCIsImFscG4iOiJoMixodHRwLzEuMSIsImZwIjoic2FmYXJpIiwiaG9zdCI6ImRpc2NvcmQuY29tIiwiaWQiOiI0ZTY0YTIzZi0wZWE1LTQxYzUtODYzMS0zYWRkYWFhOWEyYzYiLCJuZXQiOiJ3cyIsInBhdGgiOiIvdm1lc3MiLCJwb3J0Ijo0NDMsInBzIjoiVk1lc3NfV1NfMTA0LjE2LjAuMSIsInNjeSI6ImF1dG8iLCJzbmkiOiJkaXNjb3JkLmNvbSIsInRscyI6InRscyIsInR5cGUiOiJub25lIiwidiI6IjIifQ==
+vmess://eyJhZGQiOiIxMDQuMTYuMC4xIiwiYWlkIjoiMCIsImFscG4iOiJoMixodHRwLzEuMSIsImZwIjoiZWRnZSIsImhvc3QiOiJ3d3cuZ29vZ2xlLmNvbSIsImlkIjoiYWY3ODkwZmItZDNlYy00MDEyLTk4MzMtZmEzYmU4OGM1NGNlIiwibmV0Ijoid3MiLCJwYXRoIjoiLyIsInBvcnQiOjQ0MywicHMiOiJWTWVzc19XU18xMDQuMTYuMC4xIiwic2N5IjoiYXV0byIsInNuaSI6Ind3dy5nb29nbGUuY29tIiwidGxzIjoidGxzIiwidHlwZSI6Im5vbmUiLCJ2IjoiMiJ9
 
-vmess://eyJhZGQiOiIxMDQuMTYuMC4xIiwiYWlkIjoiMCIsImFscG4iOiJoMixodHRwLzEuMSIsImZwIjoicmFuZG9tIiwiaG9zdCI6IiIsImlkIjoiMzk1NGYxMmMtYjgwMS00NGM4LWI1NjctNDA2NDFlN2JlZTU1IiwibmV0IjoidGNwIiwicGF0aCI6IiIsInBvcnQiOjQ0MywicHMiOiJWTWVzc19UQ1BfMTA0LjE2LjAuMSIsInNjeSI6ImF1dG8iLCJzbmkiOiJ3d3cuY2xvdWRmbGFyZS5jb20iLCJ0bHMiOiJ0bHMiLCJ0eXBlIjoibm9uZSIsInYiOiIyIn0=
+vmess://eyJhZGQiOiIxMDQuMTYuMC4xIiwiYWlkIjoiMCIsImFscG4iOiJoMixodHRwLzEuMSIsImZwIjoiY2hyb21lIiwiaG9zdCI6IiIsImlkIjoiMjc2NzgyNjMtNTA0MS00MDM5LWE2YmMtODFmODlhNzZjNTVhIiwibmV0IjoidGNwIiwicGF0aCI6IiIsInBvcnQiOjQ0MywicHMiOiJWTWVzc19UQ1BfMTA0LjE2LjAuMSIsInNjeSI6ImF1dG8iLCJzbmkiOiJkaXNjb3JkLmNvbSIsInRscyI6InRscyIsInR5cGUiOiJub25lIiwidiI6IjIifQ==
 
-trojan://7ac2d7b4-9eed-41ee-9689-317a13259611@104.16.0.1:443?type=ws&security=tls&sni=www.amazon.com&fp=edge&alpn=h2,http/1.1&path=%2Fgraphql&host=www.amazon.com#Trojan_WS_104.16.0.1
+trojan://fbf5437f-0b96-4f72-8587-fedf8f57c02f@104.16.0.1:443?type=ws&security=tls&sni=discord.com&fp=firefox&alpn=h2,http/1.1&path=%2Fws&host=discord.com#Trojan_WS_104.16.0.1
 
-trojan://9b7d62fc-8d9e-47f8-ae2c-8b8b44114a18@104.16.0.1:443?type=grpc&security=tls&sni=discord.com&fp=random&alpn=h2&serviceName=trojan2388#Trojan_gRPC_104.16.0.1
+trojan://9abaddef-96a8-4fd2-ba91-c0500c313f6b@104.16.0.1:443?type=grpc&security=tls&sni=www.microsoft.com&fp=chrome&alpn=h2&serviceName=trojan4044#Trojan_gRPC_104.16.0.1
 
-ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTozSFdCemZweDlGTGNsMXVY@104.16.0.1:443#SS_104.16.0.1
+ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpMdkVpaWhTY1JrVjZZZWNa@104.16.0.1:443#SS_104.16.0.1
 
-vless://fc591330-f353-4c8c-b8ab-b6e10d07d2a7@172.67.0.1:443?type=ws&security=tls&fp=firefox&sni=www.apple.com&alpn=h2,http/1.1&path=%2Fgraphql&host=www.apple.com&encryption=none#VLESS_WS_172.67.0.1
+vless://6e1c85a4-1451-4a73-b186-37a543f24b78@172.67.0.1:443?type=ws&security=tls&fp=edge&sni=www.cloudflare.com&alpn=h2,http/1.1&path=%2Fvless&host=www.cloudflare.com&encryption=none#VLESS_WS_172.67.0.1
 
-vless://f7e0a759-6ae2-4711-9b9a-56cec9c80b3c@172.67.0.1:443?type=grpc&security=tls&fp=safari&sni=www.google.com&alpn=h2&serviceName=grpc4483&encryption=none#VLESS_gRPC_172.67.0.1
+vless://49524d27-bad9-4773-b51e-fe11d234eeeb@172.67.0.1:443?type=grpc&security=tls&fp=edge&sni=telegram.org&alpn=h2&serviceName=grpc1334&encryption=none#VLESS_gRPC_172.67.0.1
 
-vless://eeb2e3ac-7d99-47d6-b6fd-e780e3b63f9d@172.67.0.1:443?type=tcp&security=reality&fp=random&sni=telegram.org&alpn=h2&pbk=r9ktJswu1iAGeVqpCghoyD132VxFKtGIUm1qS8U/SRE=&sid=8b1f3c66&encryption=none#VLESS_TCP_172.67.0.1
+vless://ba3f4d48-db28-4be5-b468-10032d33f883@172.67.0.1:443?type=tcp&security=reality&fp=firefox&sni=www.amazon.com&alpn=h2&pbk=tIqDTFlSJwXy381TeAXLWbdgGJSlDS3IcfY3ZiQIUIY=&sid=bcde865d&encryption=none#VLESS_TCP_172.67.0.1
 
-vmess://eyJhZGQiOiIxNzIuNjcuMC4xIiwiYWlkIjoiMCIsImFscG4iOiJoMixodHRwLzEuMSIsImZwIjoiZWRnZSIsImhvc3QiOiJ3d3cuYW1hem9uLmNvbSIsImlkIjoiOTFjZjY2NGItMmE5Ni00MzJmLWIzOGQtOWM2NDU2YzlhNmEzIiwibmV0Ijoid3MiLCJwYXRoIjoiL2FwaSIsInBvcnQiOjQ0MywicHMiOiJWTWVzc19XU18xNzIuNjcuMC4xIiwic2N5IjoiYXV0byIsInNuaSI6Ind3dy5hbWF6b24uY29tIiwidGxzIjoidGxzIiwidHlwZSI6Im5vbmUiLCJ2IjoiMiJ9
+vmess://eyJhZGQiOiIxNzIuNjcuMC4xIiwiYWlkIjoiMCIsImFscG4iOiJoMixodHRwLzEuMSIsImZwIjoiZmlyZWZveCIsImhvc3QiOiJ0ZWxlZ3JhbS5vcmciLCJpZCI6Ijc4NDY5YWQ2LTExYzctNGZkOC1iNjQ2LWNlZTI5N2I1MmY3NiIsIm5ldCI6IndzIiwicGF0aCI6Ii92bWVzcyIsInBvcnQiOjQ0MywicHMiOiJWTWVzc19XU18xNzIuNjcuMC4xIiwic2N5IjoiYXV0byIsInNuaSI6InRlbGVncmFtLm9yZyIsInRscyI6InRscyIsInR5cGUiOiJub25lIiwidiI6IjIifQ==
 
-vmess://eyJhZGQiOiIxNzIuNjcuMC4xIiwiYWlkIjoiMCIsImFscG4iOiJoMixodHRwLzEuMSIsImZwIjoiY2hyb21lIiwiaG9zdCI6IiIsImlkIjoiZTBiZTViZDAtOWUyNi00ZjA3LThhZDQtOTNkOWI2OWM0MzZkIiwibmV0IjoidGNwIiwicGF0aCI6IiIsInBvcnQiOjQ0MywicHMiOiJWTWVzc19UQ1BfMTcyLjY3LjAuMSIsInNjeSI6ImF1dG8iLCJzbmkiOiJ0ZWxlZ3JhbS5vcmciLCJ0bHMiOiJ0bHMiLCJ0eXBlIjoibm9uZSIsInYiOiIyIn0=
+vmess://eyJhZGQiOiIxNzIuNjcuMC4xIiwiYWlkIjoiMCIsImFscG4iOiJoMixodHRwLzEuMSIsImZwIjoiZWRnZSIsImhvc3QiOiIiLCJpZCI6ImMxZWU5N2E1LTYxNDItNGRkMy04YzI4LTZmOTY2MWI4Y2RjNSIsIm5ldCI6InRjcCIsInBhdGgiOiIiLCJwb3J0Ijo0NDMsInBzIjoiVk1lc3NfVENQXzE3Mi42Ny4wLjEiLCJzY3kiOiJhdXRvIiwic25pIjoidGVsZWdyYW0ub3JnIiwidGxzIjoidGxzIiwidHlwZSI6Im5vbmUiLCJ2IjoiMiJ9
 
-trojan://bcf1bc04-df3d-465b-8252-257c28ea9bcf@172.67.0.1:443?type=ws&security=tls&sni=www.microsoft.com&fp=random&alpn=h2,http/1.1&path=%2F&host=www.microsoft.com#Trojan_WS_172.67.0.1
+trojan://3740461b-9520-4c88-9253-59bb643e9963@172.67.0.1:443?type=ws&security=tls&sni=www.amazon.com&fp=random&alpn=h2,http/1.1&path=%2Fgraphql&host=www.amazon.com#Trojan_WS_172.67.0.1
 
-trojan://df9650ea-b749-4f74-ae65-1473526e7a82@172.67.0.1:443?type=grpc&security=tls&sni=telegram.org&fp=random&alpn=h2&serviceName=trojan1021#Trojan_gRPC_172.67.0.1
+trojan://7f7433cd-8f68-47fd-84f1-8e197e452c03@172.67.0.1:443?type=grpc&security=tls&sni=www.microsoft.com&fp=edge&alpn=h2&serviceName=trojan8075#Trojan_gRPC_172.67.0.1
 
-ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpFYnBRYnVEN1FZTzdOY0xz@172.67.0.1:443#SS_172.67.0.1
+ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpPaTNYMFhrcUJvUTBPS3VY@172.67.0.1:443#SS_172.67.0.1
 
-vless://35735e9e-9f88-4404-9b1a-acae62740703@1.1.1.1:443?type=ws&security=tls&fp=random&sni=www.apple.com&alpn=h2,http/1.1&path=%2Fws&host=www.apple.com&encryption=none#VLESS_WS_1.1.1.1
+vless://5f4d3600-7bea-4eec-bf70-9d3498c62589@1.1.1.1:443?type=ws&security=tls&fp=chrome&sni=www.speedtest.net&alpn=h2,http/1.1&path=%2Fws&host=www.speedtest.net&encryption=none#VLESS_WS_1.1.1.1
 
-vless://0e162737-6bf5-42af-9cb3-08c356ea3d4a@1.1.1.1:443?type=grpc&security=tls&fp=chrome&sni=discord.com&alpn=h2&serviceName=grpc7005&encryption=none#VLESS_gRPC_1.1.1.1
+vless://a6a02dc0-a9f8-4732-9c52-58b2b7b9dc63@1.1.1.1:443?type=grpc&security=tls&fp=chrome&sni=discord.com&alpn=h2&serviceName=grpc7425&encryption=none#VLESS_gRPC_1.1.1.1
 
-vless://544ffe80-9bfc-4bcb-a3c6-164fff7c2987@1.1.1.1:443?type=tcp&security=reality&fp=chrome&sni=telegram.org&alpn=h2&pbk=6CnwHqfLwWLj/HbreBxy75QrsgtlUeUrY+LbFqijlAE=&sid=48e85be0&encryption=none#VLESS_TCP_1.1.1.1
+vless://e078338f-61e5-4132-9ab7-99bd7c666e14@1.1.1.1:443?type=tcp&security=reality&fp=chrome&sni=www.speedtest.net&alpn=h2&pbk=6OUhinlZFTmkHLK9az1lvPh7PJ2qTbXlexvjHl7/i94=&sid=5493316b&encryption=none#VLESS_TCP_1.1.1.1
 
-vmess://eyJhZGQiOiIxLjEuMS4xIiwiYWlkIjoiMCIsImFscG4iOiJoMixodHRwLzEuMSIsImZwIjoiZWRnZSIsImhvc3QiOiJ3d3cubWljcm9zb2Z0LmNvbSIsImlkIjoiOWYzYmYzMWYtMzU2Zi00OGMyLWFlM2QtMjY2ZWUzMTIyNDc4IiwibmV0Ijoid3MiLCJwYXRoIjoiL3dzIiwicG9ydCI6NDQzLCJwcyI6IlZNZXNzX1dTXzEuMS4xLjEiLCJzY3kiOiJhdXRvIiwic25pIjoid3d3Lm1pY3Jvc29mdC5jb20iLCJ0bHMiOiJ0bHMiLCJ0eXBlIjoibm9uZSIsInYiOiIyIn0=
+vmess://eyJhZGQiOiIxLjEuMS4xIiwiYWlkIjoiMCIsImFscG4iOiJoMixodHRwLzEuMSIsImZwIjoiY2hyb21lIiwiaG9zdCI6Ind3dy5nb29nbGUuY29tIiwiaWQiOiI0Nzg4N2UwOS02ODBmLTQ4OTQtOGVlZi0yZGQyODI5NWUyZmQiLCJuZXQiOiJ3cyIsInBhdGgiOiIvIiwicG9ydCI6NDQzLCJwcyI6IlZNZXNzX1dTXzEuMS4xLjEiLCJzY3kiOiJhdXRvIiwic25pIjoid3d3Lmdvb2dsZS5jb20iLCJ0bHMiOiJ0bHMiLCJ0eXBlIjoibm9uZSIsInYiOiIyIn0=
 
-vmess://eyJhZGQiOiIxLjEuMS4xIiwiYWlkIjoiMCIsImFscG4iOiJoMixodHRwLzEuMSIsImZwIjoicmFuZG9tIiwiaG9zdCI6IiIsImlkIjoiNDFiYmMwYjMtMjA1Ny00NTJjLWE1YTQtMmFjYWM4ODczZDI5IiwibmV0IjoidGNwIiwicGF0aCI6IiIsInBvcnQiOjQ0MywicHMiOiJWTWVzc19UQ1BfMS4xLjEuMSIsInNjeSI6ImF1dG8iLCJzbmkiOiJkaXNjb3JkLmNvbSIsInRscyI6InRscyIsInR5cGUiOiJub25lIiwidiI6IjIifQ==
+vmess://eyJhZGQiOiIxLjEuMS4xIiwiYWlkIjoiMCIsImFscG4iOiJoMixodHRwLzEuMSIsImZwIjoiY2hyb21lIiwiaG9zdCI6IiIsImlkIjoiZTljMjc1M2MtZTg1Yi00ZTM4LTliNmUtM2JjMDVkMjJlNWEwIiwibmV0IjoidGNwIiwicGF0aCI6IiIsInBvcnQiOjQ0MywicHMiOiJWTWVzc19UQ1BfMS4xLjEuMSIsInNjeSI6ImF1dG8iLCJzbmkiOiJ3d3cuY2xvdWRmbGFyZS5jb20iLCJ0bHMiOiJ0bHMiLCJ0eXBlIjoibm9uZSIsInYiOiIyIn0=
 
-trojan://2c4e0f0a-7966-42e4-89a5-639e447095c9@1.1.1.1:443?type=ws&security=tls&sni=www.google.com&fp=safari&alpn=h2,http/1.1&path=%2Fgraphql&host=www.google.com#Trojan_WS_1.1.1.1
+trojan://8954b71a-f7e8-4068-8c5c-342cf20f78fd@1.1.1.1:443?type=ws&security=tls&sni=www.amazon.com&fp=firefox&alpn=h2,http/1.1&path=%2Fgraphql&host=www.amazon.com#Trojan_WS_1.1.1.1
 
-trojan://c1783d5f-4a60-4c82-abd8-258e64eff809@1.1.1.1:443?type=grpc&security=tls&sni=discord.com&fp=safari&alpn=h2&serviceName=trojan9237#Trojan_gRPC_1.1.1.1
+trojan://628a9a80-52f2-4556-8e94-aa9127ee36b0@1.1.1.1:443?type=grpc&security=tls&sni=www.apple.com&fp=chrome&alpn=h2&serviceName=trojan9225#Trojan_gRPC_1.1.1.1
 
-ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTptdGFVY2RzUUU2SUVHTHht@1.1.1.1:443#SS_1.1.1.1
+ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpKUVZ5a1RwTWtYWHpJTUoy@1.1.1.1:443#SS_1.1.1.1

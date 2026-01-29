@@ -1,17 +1,17 @@
-vless://a10dcb32-c203-4b77-9246-0ff1149f4e91@104.16.0.1:443?type=ws&security=tls&fp=edge&sni=telegram.org&alpn=h2,http/1.1&path=%2F&host=telegram.org&encryption=none#VLESS_WS_104.16.0.1
+vless://4b23210e-ce85-4e3b-bf39-d3fc0bae7115@104.16.0.1:443?type=ws&security=tls&fp=chrome&sni=www.apple.com&alpn=h2,http/1.1&path=%2Fvmess&host=www.apple.com&encryption=none#VLESS_WS_104.16.0.1
 
-vless://017edbfd-a683-40d2-a512-37bb0f59fcbb@104.16.0.1:443?type=grpc&security=tls&fp=chrome&sni=www.speedtest.net&alpn=h2&serviceName=grpc6243&encryption=none#VLESS_gRPC_104.16.0.1
+vless://aeb773d9-01ac-4365-9079-2699a427deaa@104.16.0.1:443?type=grpc&security=tls&fp=firefox&sni=www.speedtest.net&alpn=h2&serviceName=grpc9711&encryption=none#VLESS_gRPC_104.16.0.1
 
-vless://446ab556-1246-497b-b6a4-fd98bee17cab@104.16.0.1:443?type=tcp&security=reality&fp=firefox&sni=www.apple.com&alpn=h2&pbk=kLrej3HONxNO1aU++Y0Kqxi+PUzufDEp2i8XURHJsCY=&sid=4db8ea9b&encryption=none#VLESS_TCP_104.16.0.1
+vless://ffc879d7-83a7-4b60-84b7-bd75aad4faec@104.16.0.1:443?type=tcp&security=reality&fp=random&sni=www.cloudflare.com&alpn=h2&pbk=U4r9daa67yfrepkMEy/4X6Z6EFiZRT1qda0gicpDie0=&sid=06b9e47e&encryption=none#VLESS_TCP_104.16.0.1
 
-vless://fc591330-f353-4c8c-b8ab-b6e10d07d2a7@172.67.0.1:443?type=ws&security=tls&fp=firefox&sni=www.apple.com&alpn=h2,http/1.1&path=%2Fgraphql&host=www.apple.com&encryption=none#VLESS_WS_172.67.0.1
+vless://6e1c85a4-1451-4a73-b186-37a543f24b78@172.67.0.1:443?type=ws&security=tls&fp=edge&sni=www.cloudflare.com&alpn=h2,http/1.1&path=%2Fvless&host=www.cloudflare.com&encryption=none#VLESS_WS_172.67.0.1
 
-vless://f7e0a759-6ae2-4711-9b9a-56cec9c80b3c@172.67.0.1:443?type=grpc&security=tls&fp=safari&sni=www.google.com&alpn=h2&serviceName=grpc4483&encryption=none#VLESS_gRPC_172.67.0.1
+vless://49524d27-bad9-4773-b51e-fe11d234eeeb@172.67.0.1:443?type=grpc&security=tls&fp=edge&sni=telegram.org&alpn=h2&serviceName=grpc1334&encryption=none#VLESS_gRPC_172.67.0.1
 
-vless://eeb2e3ac-7d99-47d6-b6fd-e780e3b63f9d@172.67.0.1:443?type=tcp&security=reality&fp=random&sni=telegram.org&alpn=h2&pbk=r9ktJswu1iAGeVqpCghoyD132VxFKtGIUm1qS8U/SRE=&sid=8b1f3c66&encryption=none#VLESS_TCP_172.67.0.1
+vless://ba3f4d48-db28-4be5-b468-10032d33f883@172.67.0.1:443?type=tcp&security=reality&fp=firefox&sni=www.amazon.com&alpn=h2&pbk=tIqDTFlSJwXy381TeAXLWbdgGJSlDS3IcfY3ZiQIUIY=&sid=bcde865d&encryption=none#VLESS_TCP_172.67.0.1
 
-vless://35735e9e-9f88-4404-9b1a-acae62740703@1.1.1.1:443?type=ws&security=tls&fp=random&sni=www.apple.com&alpn=h2,http/1.1&path=%2Fws&host=www.apple.com&encryption=none#VLESS_WS_1.1.1.1
+vless://5f4d3600-7bea-4eec-bf70-9d3498c62589@1.1.1.1:443?type=ws&security=tls&fp=chrome&sni=www.speedtest.net&alpn=h2,http/1.1&path=%2Fws&host=www.speedtest.net&encryption=none#VLESS_WS_1.1.1.1
 
-vless://0e162737-6bf5-42af-9cb3-08c356ea3d4a@1.1.1.1:443?type=grpc&security=tls&fp=chrome&sni=discord.com&alpn=h2&serviceName=grpc7005&encryption=none#VLESS_gRPC_1.1.1.1
+vless://a6a02dc0-a9f8-4732-9c52-58b2b7b9dc63@1.1.1.1:443?type=grpc&security=tls&fp=chrome&sni=discord.com&alpn=h2&serviceName=grpc7425&encryption=none#VLESS_gRPC_1.1.1.1
 
-vless://544ffe80-9bfc-4bcb-a3c6-164fff7c2987@1.1.1.1:443?type=tcp&security=reality&fp=chrome&sni=telegram.org&alpn=h2&pbk=6CnwHqfLwWLj/HbreBxy75QrsgtlUeUrY+LbFqijlAE=&sid=48e85be0&encryption=none#VLESS_TCP_1.1.1.1
+vless://e078338f-61e5-4132-9ab7-99bd7c666e14@1.1.1.1:443?type=tcp&security=reality&fp=chrome&sni=www.speedtest.net&alpn=h2&pbk=6OUhinlZFTmkHLK9az1lvPh7PJ2qTbXlexvjHl7/i94=&sid=5493316b&encryption=none#VLESS_TCP_1.1.1.1
