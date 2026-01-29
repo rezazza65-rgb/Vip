@@ -55,10 +55,6 @@ strip = true
 opt-level = 0
 debug = true
 
-[lib]
-name = "config_generator"
-path = "src/lib.rs"
-
 [[bin]]
 name = "config-generator"
 path = "src/main.rs"
@@ -85,10 +81,6 @@ strip = true
 [profile.dev]
 opt-level = 0
 debug = true
-
-[lib]
-name = "config_generator"
-path = "src/lib.rs"
 
 [[bin]]
 name = "config-generator"
