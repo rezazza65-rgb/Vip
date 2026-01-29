@@ -1,4 +1,2 @@
-QR Code Index
-=============
-
-No QR codes generated.
+QR Codes Generated: 24
+Total Configs: 24

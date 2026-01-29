@@ -1,21 +1,14 @@
-Configuration Test Statistics
-==============================
+Configuration Statistics
+========================
 
-Generated at: 2026-01-29T20:18:54.312118937+00:00
+Generated: 2026-01-29T20:44:12.282957064+00:00
 
-Total Configs Generated: 0
-Total Configs Tested: 0
-Working Configs: 0
-Failed Configs: 0
-Success Rate: 0.00%
+Total Configs: 24
+Working: 13
+Failed: 11
+Success Rate: 54.2%
 
-Performance Metrics:
-- Average Response Time: 0.00 ms
-- Fastest Response Time: N/A ms
-- Slowest Response Time: N/A ms
-
-Files Generated:
-- all_configs.txt: All 0 generated configurations
-- config_links.txt: 0 working configurations
-- subscription.txt: Base64 of all configs
-- working_subscription.txt: Base64 of working configs only
+Response Times:
+- Average: 334 ms
+- Fastest: 57 ms
+- Slowest: 531 ms

@@ -1,1 +1,17 @@
-# No VLESS configurations generated
+vless://a10dcb32-c203-4b77-9246-0ff1149f4e91@104.16.0.1:443?type=ws&security=tls&fp=edge&sni=telegram.org&alpn=h2,http/1.1&path=%2F&host=telegram.org&encryption=none#VLESS_WS_104.16.0.1
+
+vless://017edbfd-a683-40d2-a512-37bb0f59fcbb@104.16.0.1:443?type=grpc&security=tls&fp=chrome&sni=www.speedtest.net&alpn=h2&serviceName=grpc6243&encryption=none#VLESS_gRPC_104.16.0.1
+
+vless://446ab556-1246-497b-b6a4-fd98bee17cab@104.16.0.1:443?type=tcp&security=reality&fp=firefox&sni=www.apple.com&alpn=h2&pbk=kLrej3HONxNO1aU++Y0Kqxi+PUzufDEp2i8XURHJsCY=&sid=4db8ea9b&encryption=none#VLESS_TCP_104.16.0.1
+
+vless://fc591330-f353-4c8c-b8ab-b6e10d07d2a7@172.67.0.1:443?type=ws&security=tls&fp=firefox&sni=www.apple.com&alpn=h2,http/1.1&path=%2Fgraphql&host=www.apple.com&encryption=none#VLESS_WS_172.67.0.1
+
+vless://f7e0a759-6ae2-4711-9b9a-56cec9c80b3c@172.67.0.1:443?type=grpc&security=tls&fp=safari&sni=www.google.com&alpn=h2&serviceName=grpc4483&encryption=none#VLESS_gRPC_172.67.0.1
+
+vless://eeb2e3ac-7d99-47d6-b6fd-e780e3b63f9d@172.67.0.1:443?type=tcp&security=reality&fp=random&sni=telegram.org&alpn=h2&pbk=r9ktJswu1iAGeVqpCghoyD132VxFKtGIUm1qS8U/SRE=&sid=8b1f3c66&encryption=none#VLESS_TCP_172.67.0.1
+
+vless://35735e9e-9f88-4404-9b1a-acae62740703@1.1.1.1:443?type=ws&security=tls&fp=random&sni=www.apple.com&alpn=h2,http/1.1&path=%2Fws&host=www.apple.com&encryption=none#VLESS_WS_1.1.1.1
+
+vless://0e162737-6bf5-42af-9cb3-08c356ea3d4a@1.1.1.1:443?type=grpc&security=tls&fp=chrome&sni=discord.com&alpn=h2&serviceName=grpc7005&encryption=none#VLESS_gRPC_1.1.1.1
+
+vless://544ffe80-9bfc-4bcb-a3c6-164fff7c2987@1.1.1.1:443?type=tcp&security=reality&fp=chrome&sni=telegram.org&alpn=h2&pbk=6CnwHqfLwWLj/HbreBxy75QrsgtlUeUrY+LbFqijlAE=&sid=48e85be0&encryption=none#VLESS_TCP_1.1.1.1

@@ -1,2 +1,25 @@
-# No working configurations available yet
-# All generated configs are in all_configs.txt
+vless://017edbfd-a683-40d2-a512-37bb0f59fcbb@104.16.0.1:443?type=grpc&security=tls&fp=chrome&sni=www.speedtest.net&alpn=h2&serviceName=grpc6243&encryption=none#VLESS_gRPC_104.16.0.1
+
+vmess://eyJhZGQiOiIxMDQuMTYuMC4xIiwiYWlkIjoiMCIsImFscG4iOiJoMixodHRwLzEuMSIsImZwIjoic2FmYXJpIiwiaG9zdCI6ImRpc2NvcmQuY29tIiwiaWQiOiI0ZTY0YTIzZi0wZWE1LTQxYzUtODYzMS0zYWRkYWFhOWEyYzYiLCJuZXQiOiJ3cyIsInBhdGgiOiIvdm1lc3MiLCJwb3J0Ijo0NDMsInBzIjoiVk1lc3NfV1NfMTA0LjE2LjAuMSIsInNjeSI6ImF1dG8iLCJzbmkiOiJkaXNjb3JkLmNvbSIsInRscyI6InRscyIsInR5cGUiOiJub25lIiwidiI6IjIifQ==
+
+vmess://eyJhZGQiOiIxMDQuMTYuMC4xIiwiYWlkIjoiMCIsImFscG4iOiJoMixodHRwLzEuMSIsImZwIjoicmFuZG9tIiwiaG9zdCI6IiIsImlkIjoiMzk1NGYxMmMtYjgwMS00NGM4LWI1NjctNDA2NDFlN2JlZTU1IiwibmV0IjoidGNwIiwicGF0aCI6IiIsInBvcnQiOjQ0MywicHMiOiJWTWVzc19UQ1BfMTA0LjE2LjAuMSIsInNjeSI6ImF1dG8iLCJzbmkiOiJ3d3cuY2xvdWRmbGFyZS5jb20iLCJ0bHMiOiJ0bHMiLCJ0eXBlIjoibm9uZSIsInYiOiIyIn0=
+
+trojan://9b7d62fc-8d9e-47f8-ae2c-8b8b44114a18@104.16.0.1:443?type=grpc&security=tls&sni=discord.com&fp=random&alpn=h2&serviceName=trojan2388#Trojan_gRPC_104.16.0.1
+
+ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTozSFdCemZweDlGTGNsMXVY@104.16.0.1:443#SS_104.16.0.1
+
+vless://35735e9e-9f88-4404-9b1a-acae62740703@1.1.1.1:443?type=ws&security=tls&fp=random&sni=www.apple.com&alpn=h2,http/1.1&path=%2Fws&host=www.apple.com&encryption=none#VLESS_WS_1.1.1.1
+
+vless://0e162737-6bf5-42af-9cb3-08c356ea3d4a@1.1.1.1:443?type=grpc&security=tls&fp=chrome&sni=discord.com&alpn=h2&serviceName=grpc7005&encryption=none#VLESS_gRPC_1.1.1.1
+
+vless://544ffe80-9bfc-4bcb-a3c6-164fff7c2987@1.1.1.1:443?type=tcp&security=reality&fp=chrome&sni=telegram.org&alpn=h2&pbk=6CnwHqfLwWLj/HbreBxy75QrsgtlUeUrY+LbFqijlAE=&sid=48e85be0&encryption=none#VLESS_TCP_1.1.1.1
+
+vmess://eyJhZGQiOiIxLjEuMS4xIiwiYWlkIjoiMCIsImFscG4iOiJoMixodHRwLzEuMSIsImZwIjoiZWRnZSIsImhvc3QiOiJ3d3cubWljcm9zb2Z0LmNvbSIsImlkIjoiOWYzYmYzMWYtMzU2Zi00OGMyLWFlM2QtMjY2ZWUzMTIyNDc4IiwibmV0Ijoid3MiLCJwYXRoIjoiL3dzIiwicG9ydCI6NDQzLCJwcyI6IlZNZXNzX1dTXzEuMS4xLjEiLCJzY3kiOiJhdXRvIiwic25pIjoid3d3Lm1pY3Jvc29mdC5jb20iLCJ0bHMiOiJ0bHMiLCJ0eXBlIjoibm9uZSIsInYiOiIyIn0=
+
+vmess://eyJhZGQiOiIxLjEuMS4xIiwiYWlkIjoiMCIsImFscG4iOiJoMixodHRwLzEuMSIsImZwIjoicmFuZG9tIiwiaG9zdCI6IiIsImlkIjoiNDFiYmMwYjMtMjA1Ny00NTJjLWE1YTQtMmFjYWM4ODczZDI5IiwibmV0IjoidGNwIiwicGF0aCI6IiIsInBvcnQiOjQ0MywicHMiOiJWTWVzc19UQ1BfMS4xLjEuMSIsInNjeSI6ImF1dG8iLCJzbmkiOiJkaXNjb3JkLmNvbSIsInRscyI6InRscyIsInR5cGUiOiJub25lIiwidiI6IjIifQ==
+
+trojan://2c4e0f0a-7966-42e4-89a5-639e447095c9@1.1.1.1:443?type=ws&security=tls&sni=www.google.com&fp=safari&alpn=h2,http/1.1&path=%2Fgraphql&host=www.google.com#Trojan_WS_1.1.1.1
+
+trojan://c1783d5f-4a60-4c82-abd8-258e64eff809@1.1.1.1:443?type=grpc&security=tls&sni=discord.com&fp=safari&alpn=h2&serviceName=trojan9237#Trojan_gRPC_1.1.1.1
+
+ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTptdGFVY2RzUUU2SUVHTHht@1.1.1.1:443#SS_1.1.1.1

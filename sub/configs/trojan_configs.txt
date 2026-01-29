@@ -1,1 +1,11 @@
-# No Trojan configurations generated
+trojan://7ac2d7b4-9eed-41ee-9689-317a13259611@104.16.0.1:443?type=ws&security=tls&sni=www.amazon.com&fp=edge&alpn=h2,http/1.1&path=%2Fgraphql&host=www.amazon.com#Trojan_WS_104.16.0.1
+
+trojan://9b7d62fc-8d9e-47f8-ae2c-8b8b44114a18@104.16.0.1:443?type=grpc&security=tls&sni=discord.com&fp=random&alpn=h2&serviceName=trojan2388#Trojan_gRPC_104.16.0.1
+
+trojan://bcf1bc04-df3d-465b-8252-257c28ea9bcf@172.67.0.1:443?type=ws&security=tls&sni=www.microsoft.com&fp=random&alpn=h2,http/1.1&path=%2F&host=www.microsoft.com#Trojan_WS_172.67.0.1
+
+trojan://df9650ea-b749-4f74-ae65-1473526e7a82@172.67.0.1:443?type=grpc&security=tls&sni=telegram.org&fp=random&alpn=h2&serviceName=trojan1021#Trojan_gRPC_172.67.0.1
+
+trojan://2c4e0f0a-7966-42e4-89a5-639e447095c9@1.1.1.1:443?type=ws&security=tls&sni=www.google.com&fp=safari&alpn=h2,http/1.1&path=%2Fgraphql&host=www.google.com#Trojan_WS_1.1.1.1
+
+trojan://c1783d5f-4a60-4c82-abd8-258e64eff809@1.1.1.1:443?type=grpc&security=tls&sni=discord.com&fp=safari&alpn=h2&serviceName=trojan9237#Trojan_gRPC_1.1.1.1
