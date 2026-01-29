@@ -10,16 +10,16 @@
 
 ## Files
 
-| File | Description |
-|------|-------------|
-| `all_configs.txt` | All 24 configs |
-| `config_links.txt` | 13 working configs |
-| `subscription.txt` | Base64 subscription |
-| `vless_configs.txt` | VLESS only |
-| `vmess_configs.txt` | VMess only |
-| `trojan_configs.txt` | Trojan only |
-| `shadowsocks_configs.txt` | SS only |
-| `qr_codes/` | QR codes |
+| File                      | Description         |
+| ------------------------- | ------------------- |
+| `all_configs.txt`         | All 24 configs      |
+| `config_links.txt`        | 13 working configs  |
+| `subscription.txt`        | Base64 subscription |
+| `vless_configs.txt`       | VLESS only          |
+| `vmess_configs.txt`       | VMess only          |
+| `trojan_configs.txt`      | Trojan only         |
+| `shadowsocks_configs.txt` | SS only             |
+| `qr_codes/`               | QR codes            |
 
 ## Protocol Breakdown
 
@@ -29,4 +29,5 @@
 - **SS:** 3 total, 2 working
 
 ---
-*Auto-generated*
+
+_Auto-generated_
