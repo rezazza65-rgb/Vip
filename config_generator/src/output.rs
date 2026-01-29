@@ -1,7 +1,6 @@
 use base64::{engine::general_purpose, Engine as _};
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::io;
 use std::path::Path;
 
 use crate::generator::{ConfigGenerator, ProxyConfig};
@@ -27,7 +26,6 @@ pub struct ConfigOutput {
     pub is_tested: bool,
     pub is_working: bool,
     pub response_time_ms: Option<u64>,
-    pub error_message: Option<String>,
 }
 
 pub struct OutputGenerator {
@@ -47,30 +45,16 @@ impl OutputGenerator {
         }
     }
 
-    pub fn create_empty_output(&self) -> OutputBundle {
+    pub fn create_bundle_from_configs(&self, configs: &[ProxyConfig]) -> OutputBundle {
         let timestamp = chrono::Utc::now().to_rfc3339();
-        let empty_b64 = general_purpose::STANDARD.encode("");
-
-        OutputBundle {
-            subscription_link: empty_b64.clone(),
-            working_subscription_link: empty_b64,
-            all_configs: Vec::new(),
-            configs: Vec::new(),
-            statistics: TestStatistics::default(),
-            generated_at: timestamp,
-        }
-    }
-
-    pub fn generate_output_without_testing(&self, configs: &[ProxyConfig]) -> OutputBundle {
-        let timestamp = chrono::Utc::now().to_rfc3339();
-        let mut all_config_outputs = Vec::new();
+        let mut all_outputs = Vec::new();
         let mut all_links = Vec::new();
 
         for config in configs {
-            let link = self.generator.to_subscription_link(config);
+            let link = self.generator.to_link(config);
             all_links.push(link.clone());
 
-            let config_output = ConfigOutput {
+            all_outputs.push(ConfigOutput {
                 link,
                 protocol: config.protocol.to_string(),
                 transmission: config.transmission.to_string(),
@@ -79,19 +63,16 @@ impl OutputGenerator {
                 is_tested: false,
                 is_working: false,
                 response_time_ms: None,
-                error_message: None,
-            };
-
-            all_config_outputs.push(config_output);
+            });
         }
 
-        let subscription_content = all_links.join("\n");
-        let subscription_link = general_purpose::STANDARD.encode(&subscription_content);
+        let sub_content = all_links.join("\n");
+        let subscription_link = general_purpose::STANDARD.encode(&sub_content);
 
         OutputBundle {
             subscription_link: subscription_link.clone(),
-            working_subscription_link: general_purpose::STANDARD.encode(""),
-            all_configs: all_config_outputs,
+            working_subscription_link: String::new(),
+            all_configs: all_outputs,
             configs: Vec::new(),
             statistics: TestStatistics {
                 total_configs: configs.len(),
@@ -106,19 +87,19 @@ impl OutputGenerator {
         }
     }
 
-    pub fn generate_output(&self, test_results: Vec<TestResult>) -> OutputBundle {
+    pub fn create_bundle_from_results(&self, results: Vec<TestResult>) -> OutputBundle {
         let timestamp = chrono::Utc::now().to_rfc3339();
         
-        let mut all_config_outputs = Vec::new();
-        let mut working_config_outputs = Vec::new();
+        let mut all_outputs = Vec::new();
+        let mut working_outputs = Vec::new();
         let mut all_links = Vec::new();
         let mut working_links = Vec::new();
 
-        for result in &test_results {
-            let link = self.generator.to_subscription_link(&result.config);
+        for result in &results {
+            let link = self.generator.to_link(&result.config);
             all_links.push(link.clone());
 
-            let config_output = ConfigOutput {
+            let output = ConfigOutput {
                 link: link.clone(),
                 protocol: result.config.protocol.to_string(),
                 transmission: result.config.transmission.to_string(),
@@ -127,155 +108,115 @@ impl OutputGenerator {
                 is_tested: true,
                 is_working: result.is_working,
                 response_time_ms: result.response_time_ms,
-                error_message: result.error_message.clone(),
             };
 
-            all_config_outputs.push(config_output.clone());
+            all_outputs.push(output.clone());
 
             if result.is_working {
                 working_links.push(link);
-                working_config_outputs.push(config_output);
+                working_outputs.push(output);
             }
         }
 
-        let all_subscription_content = all_links.join("\n");
-        let subscription_link = general_purpose::STANDARD.encode(&all_subscription_content);
+        let sub_content = all_links.join("\n");
+        let subscription_link = general_purpose::STANDARD.encode(&sub_content);
 
-        let working_subscription_content = working_links.join("\n");
-        let working_subscription_link = general_purpose::STANDARD.encode(&working_subscription_content);
+        let working_content = working_links.join("\n");
+        let working_subscription_link = general_purpose::STANDARD.encode(&working_content);
 
-        let statistics = TestStatistics::from_results(&test_results);
+        let statistics = TestStatistics::from_results(&results);
 
         OutputBundle {
             subscription_link,
             working_subscription_link,
-            all_configs: all_config_outputs,
-            configs: working_config_outputs,
+            all_configs: all_outputs,
+            configs: working_outputs,
             statistics,
             generated_at: timestamp,
         }
     }
 
-    pub fn save_all_generated_configs(
-        &self,
-        output: &OutputBundle,
-        output_dir: &str,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        fs::create_dir_all(output_dir)?;
-
-        let all_path = Path::new(output_dir).join("all_generated_configs.txt");
-        let all_links: Vec<String> = output.all_configs.iter().map(|c| c.link.clone()).collect();
-        if !all_links.is_empty() {
-            fs::write(&all_path, all_links.join("\n\n"))?;
-            println!("      ✓ all_generated_configs.txt ({} configs)", all_links.len());
-        } else {
-            fs::write(&all_path, "# No configs generated yet")?;
-        }
-
-        Ok(())
-    }
-
-    pub fn save_to_files(
-        &self,
-        output: &OutputBundle,
-        output_dir: &str,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        // Ensure directories exist
+    pub fn save_to_files(&self, bundle: &OutputBundle, output_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
         fs::create_dir_all(output_dir)?;
         fs::create_dir_all(format!("{}/qr_codes", output_dir))?;
 
         // subscription.txt
-        let subscription_path = Path::new(output_dir).join("subscription.txt");
-        fs::write(&subscription_path, &output.subscription_link)?;
+        fs::write(
+            Path::new(output_dir).join("subscription.txt"),
+            &bundle.subscription_link
+        )?;
         println!("      ✓ subscription.txt");
 
         // working_subscription.txt
-        let working_subscription_path = Path::new(output_dir).join("working_subscription.txt");
-        fs::write(&working_subscription_path, &output.working_subscription_link)?;
+        fs::write(
+            Path::new(output_dir).join("working_subscription.txt"),
+            &bundle.working_subscription_link
+        )?;
         println!("      ✓ working_subscription.txt");
 
         // configs.json
-        let json_path = Path::new(output_dir).join("configs.json");
-        let json_content = serde_json::to_string_pretty(output)?;
-        fs::write(&json_path, json_content)?;
+        let json = serde_json::to_string_pretty(bundle)?;
+        fs::write(Path::new(output_dir).join("configs.json"), json)?;
         println!("      ✓ configs.json");
 
-        // all_configs.txt
-        let all_configs_path = Path::new(output_dir).join("all_configs.txt");
-        if output.all_configs.is_empty() {
-            fs::write(&all_configs_path, "# No configurations generated yet\n# Run workflow again when proxies are detected")?;
-        } else {
-            let all_links: Vec<String> = output.all_configs.iter().map(|c| c.link.clone()).collect();
-            fs::write(&all_configs_path, all_links.join("\n\n"))?;
-        }
-        println!("      ✓ all_configs.txt ({} configs)", output.all_configs.len());
+        // all_configs.txt - ALL configs (most important!)
+        let all_links: Vec<String> = bundle.all_configs.iter().map(|c| c.link.clone()).collect();
+        fs::write(
+            Path::new(output_dir).join("all_configs.txt"),
+            all_links.join("\n\n")
+        )?;
+        println!("      ✓ all_configs.txt ({} configs)", all_links.len());
 
-        // config_links.txt (working only)
-        let links_path = Path::new(output_dir).join("config_links.txt");
-        if output.configs.is_empty() {
-            fs::write(&links_path, "# No working configurations available yet\n# All generated configs are in all_configs.txt")?;
+        // config_links.txt - working only
+        let working_links: Vec<String> = bundle.configs.iter().map(|c| c.link.clone()).collect();
+        if working_links.is_empty() {
+            fs::write(
+                Path::new(output_dir).join("config_links.txt"),
+                "# No working configs - see all_configs.txt for all generated configs"
+            )?;
         } else {
-            let links_content: Vec<String> = output.configs.iter().map(|c| c.link.clone()).collect();
-            fs::write(&links_path, links_content.join("\n\n"))?;
+            fs::write(
+                Path::new(output_dir).join("config_links.txt"),
+                working_links.join("\n\n")
+            )?;
         }
-        println!("      ✓ config_links.txt ({} working)", output.configs.len());
+        println!("      ✓ config_links.txt ({} working)", working_links.len());
 
         // statistics.txt
-        let stats_path = Path::new(output_dir).join("statistics.txt");
-        let stats_content = self.format_statistics(output);
-        fs::write(&stats_path, stats_content)?;
+        let stats = format!(
+            "Configuration Statistics\n\
+             ========================\n\n\
+             Generated: {}\n\n\
+             Total Configs: {}\n\
+             Working: {}\n\
+             Failed: {}\n\
+             Success Rate: {:.1}%\n\n\
+             Response Times:\n\
+             - Average: {:.0} ms\n\
+             - Fastest: {} ms\n\
+             - Slowest: {} ms\n",
+            bundle.generated_at,
+            bundle.all_configs.len(),
+            bundle.statistics.working_configs,
+            bundle.statistics.failed_configs,
+            bundle.statistics.success_rate,
+            bundle.statistics.average_response_time_ms,
+            bundle.statistics.fastest_response_time_ms.map(|t| t.to_string()).unwrap_or_else(|| "N/A".to_string()),
+            bundle.statistics.slowest_response_time_ms.map(|t| t.to_string()).unwrap_or_else(|| "N/A".to_string()),
+        );
+        fs::write(Path::new(output_dir).join("statistics.txt"), stats)?;
         println!("      ✓ statistics.txt");
 
         // Protocol-specific files
-        self.save_configs_by_protocol(output, output_dir)?;
+        self.save_by_protocol(bundle, output_dir)?;
 
         // README.md
-        self.save_markdown_report(output, output_dir)?;
+        self.save_readme(bundle, output_dir)?;
 
         Ok(())
     }
 
-    fn format_statistics(&self, output: &OutputBundle) -> String {
-        let fastest = output.statistics.fastest_response_time_ms
-            .map(|t| format!("{}", t))
-            .unwrap_or_else(|| "N/A".to_string());
-        let slowest = output.statistics.slowest_response_time_ms
-            .map(|t| format!("{}", t))
-            .unwrap_or_else(|| "N/A".to_string());
-
-        format!(
-            "Configuration Test Statistics\n\
-             ==============================\n\n\
-             Generated at: {}\n\n\
-             Total Configs Generated: {}\n\
-             Total Configs Tested: {}\n\
-             Working Configs: {}\n\
-             Failed Configs: {}\n\
-             Success Rate: {:.2}%\n\n\
-             Performance Metrics:\n\
-             - Average Response Time: {:.2} ms\n\
-             - Fastest Response Time: {} ms\n\
-             - Slowest Response Time: {} ms\n\n\
-             Files Generated:\n\
-             - all_configs.txt: All {} generated configurations\n\
-             - config_links.txt: {} working configurations\n\
-             - subscription.txt: Base64 of all configs\n\
-             - working_subscription.txt: Base64 of working configs only\n",
-            output.generated_at,
-            output.all_configs.len(),
-            output.statistics.total_configs,
-            output.statistics.working_configs,
-            output.statistics.failed_configs,
-            output.statistics.success_rate,
-            output.statistics.average_response_time_ms,
-            fastest,
-            slowest,
-            output.all_configs.len(),
-            output.configs.len(),
-        )
-    }
-
-    fn save_configs_by_protocol(&self, output: &OutputBundle, output_dir: &str) -> io::Result<()> {
+    fn save_by_protocol(&self, bundle: &OutputBundle, output_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
         let protocols = vec![
             ("VLESS", "vless"),
             ("VMess", "vmess"),
@@ -283,202 +224,132 @@ impl OutputGenerator {
             ("SS", "shadowsocks"),
         ];
 
-        for (protocol_name, file_prefix) in protocols {
-            let protocol_configs: Vec<&ConfigOutput> = output
-                .all_configs
-                .iter()
-                .filter(|c| c.protocol == protocol_name)
+        for (name, prefix) in protocols {
+            let configs: Vec<String> = bundle.all_configs.iter()
+                .filter(|c| c.protocol == name)
+                .map(|c| c.link.clone())
                 .collect();
 
-            let filename = format!("{}_configs.txt", file_prefix);
-            let file_path = Path::new(output_dir).join(&filename);
-
-            if !protocol_configs.is_empty() {
-                let content: Vec<String> = protocol_configs.iter().map(|c| c.link.clone()).collect();
-                fs::write(&file_path, content.join("\n\n"))?;
-                let working_count = protocol_configs.iter().filter(|c| c.is_working).count();
-                println!("      ✓ {} ({} configs, {} working)", filename, protocol_configs.len(), working_count);
+            let filename = format!("{}_configs.txt", prefix);
+            let content = if configs.is_empty() {
+                format!("# No {} configs generated", name)
             } else {
-                fs::write(&file_path, format!("# No {} configurations generated", protocol_name))?;
-                println!("      ✓ {} (0 configs)", filename);
-            }
+                configs.join("\n\n")
+            };
+
+            fs::write(Path::new(output_dir).join(&filename), content)?;
+            println!("      ✓ {} ({} configs)", filename, configs.len());
         }
 
         Ok(())
     }
 
-    fn save_markdown_report(&self, output: &OutputBundle, output_dir: &str) -> io::Result<()> {
-        let report_path = Path::new(output_dir).join("README.md");
-
+    fn save_readme(&self, bundle: &OutputBundle, output_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
         let mut md = String::new();
-        md.push_str("# Proxy Configuration Report\n\n");
-        md.push_str(&format!("**Generated:** {}\n\n", output.generated_at));
-
-        md.push_str("## 📊 Statistics\n\n");
-        md.push_str(&format!("- **Total Configs Generated:** {}\n", output.all_configs.len()));
-        md.push_str(&format!("- **Tested:** {}\n", output.statistics.total_configs));
-        md.push_str(&format!("- **Working:** {} {}\n", 
-            output.statistics.working_configs,
-            if output.statistics.working_configs > 0 { "✅" } else { "⚠️" }
-        ));
-        md.push_str(&format!("- **Failed:** {}\n", output.statistics.failed_configs));
-        md.push_str(&format!("- **Success Rate:** {:.2}%\n\n", output.statistics.success_rate));
-
-        if output.statistics.working_configs > 0 {
-            md.push_str("## ⚡ Performance\n\n");
-            md.push_str(&format!("- **Average Response:** {:.2} ms\n", output.statistics.average_response_time_ms));
-            if let Some(fastest) = output.statistics.fastest_response_time_ms {
-                md.push_str(&format!("- **Fastest:** {} ms\n", fastest));
-            }
-            if let Some(slowest) = output.statistics.slowest_response_time_ms {
-                md.push_str(&format!("- **Slowest:** {} ms\n", slowest));
-            }
-            md.push_str("\n");
-        }
-
-        md.push_str("## 📁 Files\n\n");
+        
+        md.push_str("# Proxy Configurations\n\n");
+        md.push_str(&format!("**Generated:** {}\n\n", bundle.generated_at));
+        
+        md.push_str("## Statistics\n\n");
+        md.push_str(&format!("- **Total Configs:** {}\n", bundle.all_configs.len()));
+        md.push_str(&format!("- **Working:** {}\n", bundle.statistics.working_configs));
+        md.push_str(&format!("- **Success Rate:** {:.1}%\n\n", bundle.statistics.success_rate));
+        
+        md.push_str("## Files\n\n");
         md.push_str("| File | Description |\n");
         md.push_str("|------|-------------|\n");
-        md.push_str(&format!("| `all_configs.txt` | All {} generated configs |\n", output.all_configs.len()));
-        md.push_str(&format!("| `config_links.txt` | {} working configs |\n", output.configs.len()));
-        md.push_str("| `subscription.txt` | Base64 of all configs |\n");
-        md.push_str("| `working_subscription.txt` | Base64 of working configs |\n");
-        md.push_str("| `configs.json` | Complete JSON data |\n");
-        md.push_str("| `qr_codes/` | QR codes for mobile |\n\n");
+        md.push_str(&format!("| `all_configs.txt` | All {} configs |\n", bundle.all_configs.len()));
+        md.push_str(&format!("| `config_links.txt` | {} working configs |\n", bundle.configs.len()));
+        md.push_str("| `subscription.txt` | Base64 subscription |\n");
+        md.push_str("| `vless_configs.txt` | VLESS only |\n");
+        md.push_str("| `vmess_configs.txt` | VMess only |\n");
+        md.push_str("| `trojan_configs.txt` | Trojan only |\n");
+        md.push_str("| `shadowsocks_configs.txt` | SS only |\n");
+        md.push_str("| `qr_codes/` | QR codes |\n\n");
 
-        // Protocol breakdown
-        md.push_str("## 📋 By Protocol\n\n");
+        md.push_str("## Protocol Breakdown\n\n");
         for protocol in &["VLESS", "VMess", "Trojan", "SS"] {
-            let all = output.all_configs.iter().filter(|c| c.protocol == *protocol).count();
-            let working = output.configs.iter().filter(|c| c.protocol == *protocol).count();
-            if all > 0 {
-                md.push_str(&format!("- **{}**: {} total, {} working\n", protocol, all, working));
-            }
+            let count = bundle.all_configs.iter().filter(|c| c.protocol == *protocol).count();
+            let working = bundle.configs.iter().filter(|c| c.protocol == *protocol).count();
+            md.push_str(&format!("- **{}:** {} total, {} working\n", protocol, count, working));
         }
 
-        md.push_str("\n---\n*Auto-generated by Proxy Config Generator*\n");
+        md.push_str("\n---\n*Auto-generated*\n");
 
-        fs::write(&report_path, md)?;
+        fs::write(Path::new(output_dir).join("README.md"), md)?;
         println!("      ✓ README.md");
 
         Ok(())
     }
 }
 
-pub struct SubscriptionManager {
-    #[allow(dead_code)]
-    base_url: Option<String>,
-}
+pub struct SubscriptionManager;
 
 impl Default for SubscriptionManager {
     fn default() -> Self {
-        Self::new(None)
+        Self::new()
     }
 }
 
 impl SubscriptionManager {
-    pub fn new(base_url: Option<String>) -> Self {
-        Self { base_url }
+    pub fn new() -> Self {
+        Self
     }
 
-    pub fn create_qr_code(&self, link: &str) -> Result<String, String> {
-        use qrcode::render::unicode;
-        use qrcode::QrCode;
-
-        let link_to_encode = if link.len() > 2900 { &link[..2900] } else { link };
-
-        let code = QrCode::new(link_to_encode.as_bytes())
-            .map_err(|e| format!("QR: {}", e))?;
-
-        let qr_string = code
-            .render::<unicode::Dense1x2>()
-            .dark_color(unicode::Dense1x2::Light)
-            .light_color(unicode::Dense1x2::Dark)
-            .build();
-
-        Ok(qr_string)
-    }
-
-    pub fn save_qr_codes(
-        &self,
-        configs: &[ConfigOutput],
-        output_dir: &str,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn save_qr_codes(&self, configs: &[ConfigOutput], output_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
         let qr_dir = Path::new(output_dir).join("qr_codes");
         fs::create_dir_all(&qr_dir)?;
 
         if configs.is_empty() {
-            let placeholder_path = qr_dir.join("README.txt");
-            fs::write(&placeholder_path, "QR Code Directory\n=================\n\nNo QR codes available yet.\n")?;
-            
-            let index_path = qr_dir.join("index.txt");
-            fs::write(&index_path, "QR Code Index\n=============\n\nNo QR codes generated.\n")?;
-            
-            println!("      ✓ qr_codes/ (placeholder files created)");
+            fs::write(qr_dir.join("README.txt"), "No configs available for QR codes")?;
             return Ok(());
         }
 
-        let mut success_count = 0;
-        let mut error_count = 0;
+        let mut success = 0;
+        let max_qr = std::cmp::min(50, configs.len());
 
-        let max_qr_codes = std::cmp::min(100, configs.len());
-        
-        for (idx, config) in configs.iter().take(max_qr_codes).enumerate() {
-            match self.create_qr_code(&config.link) {
-                Ok(qr) => {
-                    let status = if config.is_working { "working" } else { "generated" };
-                    let filename = format!("qr_{:03}_{}_{}.txt", idx + 1, config.protocol.to_lowercase(), status);
-                    let file_path = qr_dir.join(&filename);
+        for (i, config) in configs.iter().take(max_qr).enumerate() {
+            if let Ok(qr) = self.create_qr(&config.link) {
+                let status = if config.is_working { "working" } else { "generated" };
+                let filename = format!("qr_{:03}_{}_{}.txt", i + 1, config.protocol.to_lowercase(), status);
+                
+                let content = format!(
+                    "Config #{} - {} - {}\n{}\n\n{}\n\nLink:\n{}",
+                    i + 1,
+                    config.protocol,
+                    config.transmission,
+                    "=".repeat(40),
+                    qr,
+                    config.link
+                );
 
-                    let response_info = config.response_time_ms
-                        .map(|t| format!("{} ms", t))
-                        .unwrap_or_else(|| "N/A".to_string());
-
-                    let status_str = if config.is_working { "✅ Working" } else { "⚠️ Generated" };
-
-                    let content = format!(
-                        "Config #{} - {} - {}\n{}\n\n\
-                         Protocol: {}\n\
-                         Transmission: {}\n\
-                         Address: {}:{}\n\
-                         Status: {}\n\
-                         Response Time: {}\n\n\
-                         QR Code:\n{}\n\n\
-                         Link:\n{}",
-                        idx + 1, config.protocol, config.transmission,
-                        "=".repeat(40),
-                        config.protocol, config.transmission,
-                        config.address, config.port,
-                        status_str, response_info,
-                        qr, config.link
-                    );
-
-                    if fs::write(&file_path, content).is_ok() {
-                        success_count += 1;
-                    } else {
-                        error_count += 1;
-                    }
-                }
-                Err(_) => {
-                    error_count += 1;
+                if fs::write(qr_dir.join(&filename), content).is_ok() {
+                    success += 1;
                 }
             }
         }
 
-        // Create index file
-        let index_path = qr_dir.join("index.txt");
-        let timestamp = chrono::Utc::now().to_rfc3339();
-        let index_content = format!(
-            "QR Code Index\n=============\n\n\
-             Generated at: {}\n\n\
-             Total QR codes: {}\n\
-             Errors: {}\n\n\
-             Total configs available: {}\n",
-            timestamp, success_count, error_count, configs.len()
-        );
-        fs::write(&index_path, index_content)?;
+        // Index file
+        fs::write(
+            qr_dir.join("index.txt"),
+            format!("QR Codes Generated: {}\nTotal Configs: {}", success, configs.len())
+        )?;
 
-        println!("      ✓ qr_codes/ ({} generated, {} errors)", success_count, error_count);
+        println!("      ✓ qr_codes/ ({} files)", success);
         Ok(())
+    }
+
+    fn create_qr(&self, link: &str) -> Result<String, String> {
+        use qrcode::render::unicode;
+        use qrcode::QrCode;
+
+        let data = if link.len() > 2900 { &link[..2900] } else { link };
+        
+        let code = QrCode::new(data.as_bytes()).map_err(|e| e.to_string())?;
+        
+        Ok(code.render::<unicode::Dense1x2>()
+            .dark_color(unicode::Dense1x2::Light)
+            .light_color(unicode::Dense1x2::Dark)
+            .build())
     }
 }
