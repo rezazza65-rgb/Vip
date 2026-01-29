@@ -4,38 +4,44 @@ version = "1.0.0"
 edition = "2021"
 
 [dependencies]
-# Async Runtime
 tokio = { version = "1.35", features = ["full", "rt-multi-thread", "net", "time", "sync", "io-util", "macros"] }
 
-# Serialization/Deserialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
-# Date and Time
 chrono = { version = "0.4", features = ["serde"] }
 
-# UUID Generation
 uuid = { version = "1.6", features = ["v4", "serde"] }
 
-# Random Number Generation
 rand = "0.8"
 
-# Base64 Encoding
+[package]
+name = "config-generator"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1.35", features = ["full", "rt-multi-thread", "net", "time", "sync", "io-util", "macros"] }
+
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+chrono = { version = "0.4", features = ["serde"] }
+
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+rand = "0.8"
+
 base64 = "0.22"
 
-# URL Encoding
 urlencoding = "2.1"
 
-# QR Code Generation
 qrcode = "0.14"
 
-# HTTP Client
 reqwest = { version = "0.11", features = ["json", "native-tls"] }
 
-# Async Utilities
 futures = "0.3"
 
-# TLS Support
 tokio-native-tls = "0.3"
 native-tls = "0.2"
 
@@ -49,6 +55,41 @@ strip = true
 opt-level = 0
 debug = true
 
+[lib]
+name = "config_generator"
+path = "src/lib.rs"
+
 [[bin]]
 name = "config-generator"
-path = "main.rs"
+path = "src/main.rs"
+
+base64 = "0.22"
+
+urlencoding = "2.1"
+
+qrcode = "0.14"
+
+reqwest = { version = "0.11", features = ["json", "native-tls"] }
+
+futures = "0.3"
+
+tokio-native-tls = "0.3"
+native-tls = "0.2"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+
+[profile.dev]
+opt-level = 0
+debug = true
+
+[lib]
+name = "config_generator"
+path = "src/lib.rs"
+
+[[bin]]
+name = "config-generator"
+path = "src/main.rs"
