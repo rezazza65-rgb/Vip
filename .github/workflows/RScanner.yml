@@ -62,6 +62,7 @@ jobs:
         - `vless_configs.txt` - VLESS protocol configurations
         - `vmess_configs.txt` - VMess protocol configurations
         - `trojan_configs.txt` - Trojan protocol configurations
+        - `shadowsocks_configs.txt` - Shadowsocks protocol configurations
         - `statistics.txt` - Performance statistics
         - `qr_codes/` - QR codes for mobile device setup
 
@@ -102,6 +103,7 @@ jobs:
     # ========================================
     - name: Build Scanner (Release)
       run: cargo build --release
+      continue-on-error: false
 
     - name: Give Execute Permission to Scanner
       run: chmod +x ./target/release/RScanner || chmod +x ./target/release/rscanner || true
@@ -117,6 +119,20 @@ jobs:
           echo "❌ Scanner binary not found"
           exit 1
         fi
+        
+        # Verify scanner output was created
+        if [ -f "sub/ProxyIP-Daily.md" ]; then
+          FILESIZE=$(stat -f%z "sub/ProxyIP-Daily.md" 2>/dev/null || stat -c%s "sub/ProxyIP-Daily.md" 2>/dev/null)
+          echo "✅ Scanner output created: sub/ProxyIP-Daily.md (${FILESIZE} bytes)"
+          
+          # Show preview of scanner output
+          echo ""
+          echo "📄 Scanner output preview (first 20 lines):"
+          head -n 20 sub/ProxyIP-Daily.md
+          echo ""
+        else
+          echo "⚠️ Scanner output file not created"
+        fi
       continue-on-error: true
 
     # ========================================
@@ -124,7 +140,18 @@ jobs:
     # ========================================
     - name: Build Config Generator
       working-directory: config_generator
-      run: cargo build --release
+      run: |
+        echo "🔨 Building config generator..."
+        cargo build --release --verbose
+        
+        if [ -f target/release/config-generator ]; then
+          echo "✅ Config generator built successfully"
+          ls -lh target/release/config-generator
+        else
+          echo "❌ Config generator binary not found"
+          exit 1
+        fi
+      continue-on-error: false
 
     - name: Give Execute Permission to Config Generator
       run: chmod +x ./config_generator/target/release/config-generator
@@ -132,15 +159,29 @@ jobs:
     - name: Run Config Generator
       run: |
         echo "⚙️ Starting config generator..."
+        echo ""
+        
+        # Show current directory structure before running
+        echo "📁 Current directory structure:"
+        ls -la sub/ 2>/dev/null || echo "sub/ directory not found"
+        echo ""
+        
+        # Run the config generator with detailed output
         ./config_generator/target/release/config-generator
+        
+        echo ""
+        echo "📁 Output directory structure after generation:"
+        ls -la sub/configs/ 2>/dev/null || echo "sub/configs/ not found"
+        echo ""
       continue-on-error: true
 
     # ========================================
-    # Phase 2.5: Create Empty Files if No Proxies Found
+    # Phase 2.5: Ensure All Required Files Exist
     # ========================================
     - name: Ensure Output Files Exist
       run: |
         echo "📝 Checking and creating output files if needed..."
+        echo ""
         
         # Create output directory if it doesn't exist
         mkdir -p sub/configs/qr_codes
@@ -151,10 +192,11 @@ jobs:
           local content="$2"
           
           if [ ! -f "$filepath" ]; then
-            echo "Creating: $filepath"
+            echo "📄 Creating: $filepath"
             echo "$content" > "$filepath"
           else
-            echo "✓ Already exists: $filepath"
+            FILESIZE=$(stat -f%z "$filepath" 2>/dev/null || stat -c%s "$filepath" 2>/dev/null)
+            echo "✓ Already exists: $filepath (${FILESIZE} bytes)"
           fi
         }
         
@@ -167,40 +209,39 @@ jobs:
           PROXY_COUNT=$(grep -c "PROXY LIVE" sub/ProxyIP-Daily.md 2>/dev/null || echo "0")
         fi
         
-        echo "Found $PROXY_COUNT live proxies"
+        echo "📊 Found $PROXY_COUNT live proxies in scanner output"
+        echo ""
         
         # subscription.txt - Empty base64 if no configs
         if [ ! -f "sub/configs/subscription.txt" ]; then
-          echo "Creating empty subscription.txt"
+          echo "📄 Creating empty subscription.txt"
           echo "" | base64 > sub/configs/subscription.txt
         fi
         
         # configs.json - Empty JSON structure
         if [ ! -f "sub/configs/configs.json" ]; then
-          echo "Creating empty configs.json"
-          cat > sub/configs/configs.json << 'JSONEOF'
-        {
-          "subscription_link": "",
-          "configs": [],
-          "statistics": {
-            "total_configs": 0,
-            "working_configs": 0,
-            "failed_configs": 0,
-            "success_rate": 0.0,
-            "average_response_time_ms": 0.0,
-            "fastest_response_time_ms": null,
-            "slowest_response_time_ms": null
-          },
-          "generated_at": "TIMESTAMP_PLACEHOLDER"
-        }
-        JSONEOF
-          # Replace timestamp placeholder
-          sed -i "s/TIMESTAMP_PLACEHOLDER/$TIMESTAMP/g" sub/configs/configs.json
+          echo "📄 Creating empty configs.json"
+          cat > sub/configs/configs.json << JSONEOF
+{
+  "subscription_link": "",
+  "configs": [],
+  "statistics": {
+    "total_configs": 0,
+    "working_configs": 0,
+    "failed_configs": 0,
+    "success_rate": 0.0,
+    "average_response_time_ms": 0.0,
+    "fastest_response_time_ms": null,
+    "slowest_response_time_ms": null
+  },
+  "generated_at": "${TIMESTAMP}"
+}
+JSONEOF
         fi
         
         # config_links.txt
         create_if_missing "sub/configs/config_links.txt" "# No working configurations available yet
-        # Run workflow again when proxies are detected"
+# Run workflow again when proxies are detected"
         
         # vless_configs.txt
         create_if_missing "sub/configs/vless_configs.txt" "# No VLESS configurations available"
@@ -211,34 +252,50 @@ jobs:
         # trojan_configs.txt
         create_if_missing "sub/configs/trojan_configs.txt" "# No Trojan configurations available"
         
+        # shadowsocks_configs.txt
+        create_if_missing "sub/configs/shadowsocks_configs.txt" "# No Shadowsocks configurations available"
+        
         # statistics.txt
         if [ ! -f "sub/configs/statistics.txt" ]; then
-          echo "Creating statistics.txt"
-          cat > sub/configs/statistics.txt << 'STATSEOF'
-        Configuration Test Statistics
-        ==============================
+          echo "📄 Creating statistics.txt"
+          cat > sub/configs/statistics.txt << STATSEOF
+Configuration Test Statistics
+==============================
 
-        Generated at: TIMESTAMP_PLACEHOLDER
+Generated at: ${TIMESTAMP}
 
-        Total Configs Tested: 0
-        Working Configs: 0
-        Failed Configs: 0
-        Success Rate: 0.00%
+Total Configs Tested: 0
+Working Configs: 0
+Failed Configs: 0
+Success Rate: 0.00%
 
-        Performance Metrics:
-        - Average Response Time: 0.00 ms
-        - Fastest Response Time: N/A
-        - Slowest Response Time: N/A
+Performance Metrics:
+- Average Response Time: 0.00 ms
+- Fastest Response Time: N/A
+- Slowest Response Time: N/A
 
-        Note: No live proxies were detected in the last scan.
-        The system is ready to process proxies once they are discovered.
-        STATSEOF
-          sed -i "s/TIMESTAMP_PLACEHOLDER/$TIMESTAMP/g" sub/configs/statistics.txt
+Note: No live proxies were detected in the last scan.
+The system is ready to process proxies once they are discovered.
+STATSEOF
+        fi
+        
+        # Create README.txt in qr_codes directory
+        if [ ! -f "sub/configs/qr_codes/README.txt" ]; then
+          cat > sub/configs/qr_codes/README.txt << QREOF
+QR Code Directory
+=================
+
+No QR codes available yet.
+QR codes will be generated automatically when working proxy configurations are detected.
+QREOF
         fi
         
         echo ""
         echo "✅ All required output files are present"
-        ls -lh sub/configs/ | grep -v "^total" | tail -n +2
+        echo ""
+        echo "📊 File summary:"
+        ls -lh sub/configs/*.txt sub/configs/*.json 2>/dev/null | awk '{print "   " $9 " (" $5 ")"}'
+        echo ""
 
     # ========================================
     # Phase 3: Commit and Push Results
@@ -261,25 +318,31 @@ jobs:
           echo "⚠️ Warning: sub/ProxyIP-Daily.md not found"
         fi
         
-        # Add .gitkeep if modified
-        if [ -f "sub/configs/.gitkeep" ]; then
-          git add sub/configs/.gitkeep 2>/dev/null || true
-        fi
+        # Add .gitkeep and README if they exist
+        git add sub/configs/.gitkeep 2>/dev/null || true
+        git add sub/configs/README.md 2>/dev/null || true
         
-        # Force add all config files (they're essential outputs)
+        # Force add all config output files
         echo ""
         echo "🔍 Adding all config output files..."
         
-        # Add all files in configs directory
-        git add -f sub/configs/*.txt 2>/dev/null || true
-        git add -f sub/configs/*.json 2>/dev/null || true
-        git add -f sub/configs/*.md 2>/dev/null || true
+        # Add all files in configs directory - be explicit
+        git add -f sub/configs/subscription.txt 2>/dev/null || true
+        git add -f sub/configs/configs.json 2>/dev/null || true
+        git add -f sub/configs/config_links.txt 2>/dev/null || true
+        git add -f sub/configs/vless_configs.txt 2>/dev/null || true
+        git add -f sub/configs/vmess_configs.txt 2>/dev/null || true
+        git add -f sub/configs/trojan_configs.txt 2>/dev/null || true
+        git add -f sub/configs/shadowsocks_configs.txt 2>/dev/null || true
+        git add -f sub/configs/statistics.txt 2>/dev/null || true
+        
+        # Add QR codes directory
         git add -f sub/configs/qr_codes/* 2>/dev/null || true
         
         # Count staged files
-        FOUND_TXT=$(git diff --cached --name-only | grep -c "\.txt$" || echo "0")
-        FOUND_JSON=$(git diff --cached --name-only | grep -c "\.json$" || echo "0")
-        FOUND_MD=$(git diff --cached --name-only | grep -c "\.md$" || echo "0")
+        FOUND_TXT=$(git diff --cached --name-only 2>/dev/null | grep -c "\.txt$" || echo "0")
+        FOUND_JSON=$(git diff --cached --name-only 2>/dev/null | grep -c "\.json$" || echo "0")
+        FOUND_MD=$(git diff --cached --name-only 2>/dev/null | grep -c "\.md$" || echo "0")
         
         echo "✓ Found and staged $FOUND_TXT text file(s)"
         echo "✓ Found and staged $FOUND_JSON JSON file(s)"
@@ -295,7 +358,7 @@ jobs:
           echo "Staged files:"
           git diff --cached --name-only | sed 's/^/  • /'
         else
-          echo "ℹ️ No new files to stage"
+          echo "ℹ️ No new files to stage (all files up to date)"
         fi
 
     - name: Commit Changes
@@ -315,20 +378,26 @@ jobs:
             PROXY_COUNT=$(grep -c "PROXY LIVE" sub/ProxyIP-Daily.md 2>/dev/null || echo "0")
           fi
           
+          # Count working configs
+          WORKING_CONFIGS=0
+          if [ -f "sub/configs/configs.json" ]; then
+            WORKING_CONFIGS=$(grep -o '"working_configs": [0-9]*' sub/configs/configs.json | grep -o '[0-9]*' || echo "0")
+          fi
+          
           echo "📝 Committing $CHANGED_FILES changed file(s)"
           echo ""
           
           git commit -m "📄 Auto-update: Proxy scan & config generation
 
-        Completed at: $TIMESTAMP (Tehran Time)
+Completed at: $TIMESTAMP (Tehran Time)
 
-        📡 Proxy Scanner: Found $PROXY_COUNT live proxies
-        ⚙️ Configuration Generator: Output files updated
-        📊 Statistics and Reports: Available
-        🔗 Subscription Links: Generated
-        📱 QR Codes: Ready
+📡 Proxy Scanner: Found $PROXY_COUNT live proxies
+⚙️ Configuration Generator: $WORKING_CONFIGS working configs created
+📊 Statistics and Reports: Available in sub/configs/
+🔗 Subscription Links: Generated
+📱 QR Codes: Ready
 
-        Generated by: NET-Sentinel Automation"
+Generated by: NET-Sentinel Automation"
           
           echo "has_changes=true" >> $GITHUB_ENV
           echo "✅ Commit created successfully"
@@ -352,61 +421,74 @@ jobs:
       continue-on-error: true
 
     # ========================================
-    # Phase 4: Post-Processing
+    # Phase 4: Post-Processing & Summary
     # ========================================
     - name: Display Workflow Summary
       if: always()
       run: |
         echo ""
         echo "╔════════════════════════════════════════╗"
-        echo "         Workflow Summary"
+        echo "║        Workflow Summary                ║"
         echo "╚════════════════════════════════════════╝"
         echo ""
         
         # Check scanner output
         if [ -f "sub/ProxyIP-Daily.md" ]; then
           PROXY_COUNT=$(grep -c "PROXY LIVE" sub/ProxyIP-Daily.md 2>/dev/null || echo "0")
+          FILESIZE=$(stat -f%z "sub/ProxyIP-Daily.md" 2>/dev/null || stat -c%s "sub/ProxyIP-Daily.md" 2>/dev/null)
           echo "📡 Scanner: ✅ Success"
-          echo "   └─ Found $PROXY_COUNT live proxies"
+          echo "   ├─ Found $PROXY_COUNT live proxies"
+          echo "   └─ File size: ${FILESIZE} bytes"
         else
           echo "📡 Scanner: ⚠️ No output file"
         fi
         
-        # Check config files exist
-        CONFIG_STATUS="❌ Not created"
-        if [ -f "sub/configs/configs.json" ]; then
-          CONFIG_STATUS="✅ Created"
-        fi
-        echo "⚙️ Config Files: $CONFIG_STATUS"
+        echo ""
         
-        # List all config files
-        if [ -d "sub/configs" ]; then
-          echo ""
-          echo "📁 Config Files Status:"
-          for file in subscription.txt configs.json config_links.txt vless_configs.txt vmess_configs.txt trojan_configs.txt statistics.txt; do
-            if [ -f "sub/configs/$file" ]; then
-              SIZE=$(stat -f%z "sub/configs/$file" 2>/dev/null || stat -c%s "sub/configs/$file" 2>/dev/null || echo "0")
-              echo "   ✓ $file (${SIZE} bytes)"
-            else
-              echo "   ✗ $file (missing)"
-            fi
-          done
+        # Check config files status
+        if [ -f "sub/configs/configs.json" ]; then
+          WORKING_CONFIGS=$(grep -o '"working_configs": [0-9]*' sub/configs/configs.json | grep -o '[0-9]*' || echo "0")
+          TOTAL_CONFIGS=$(grep -o '"total_configs": [0-9]*' sub/configs/configs.json | grep -o '[0-9]*' || echo "0")
+          SUCCESS_RATE=$(grep -o '"success_rate": [0-9.]*' sub/configs/configs.json | grep -o '[0-9.]*' || echo "0")
+          
+          echo "⚙️ Config Generator: ✅ Completed"
+          echo "   ├─ Total configs tested: $TOTAL_CONFIGS"
+          echo "   ├─ Working configs: $WORKING_CONFIGS"
+          echo "   └─ Success rate: ${SUCCESS_RATE}%"
+        else
+          echo "⚙️ Config Generator: ⚠️ No configs.json found"
         fi
+        
+        echo ""
+        echo "📁 Config Files Status:"
+        
+        # List all expected config files with their status
+        for file in subscription.txt configs.json config_links.txt vless_configs.txt vmess_configs.txt trojan_configs.txt shadowsocks_configs.txt statistics.txt; do
+          if [ -f "sub/configs/$file" ]; then
+            SIZE=$(stat -f%z "sub/configs/$file" 2>/dev/null || stat -c%s "sub/configs/$file" 2>/dev/null || echo "0")
+            echo "   ✓ $file (${SIZE} bytes)"
+          else
+            echo "   ✗ $file (missing)"
+          fi
+        done
+        
+        echo ""
         
         # Check QR codes
         if [ -d "sub/configs/qr_codes" ]; then
-          QR_COUNT=$(find sub/configs/qr_codes -type f 2>/dev/null | wc -l)
+          QR_COUNT=$(find sub/configs/qr_codes -type f -name "*.txt" 2>/dev/null | wc -l)
           if [ "$QR_COUNT" -gt 0 ]; then
             echo "📱 QR Codes: ✅ Generated ($QR_COUNT files)"
           else
-            echo "📱 QR Codes: ℹ️ No QR codes (no configs to generate)"
+            echo "📱 QR Codes: ℹ️ No QR codes (waiting for working configs)"
           fi
         fi
         
         echo ""
         echo "╔════════════════════════════════════════╗"
-        echo "✅ Workflow completed"
+        echo "║  ✅ Workflow completed successfully    ║"
         echo "╚════════════════════════════════════════╝"
+        echo ""
 
     - name: Complete Job
       if: always()
